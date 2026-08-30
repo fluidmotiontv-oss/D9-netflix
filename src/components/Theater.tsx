@@ -3,7 +3,7 @@ import VideoPlayer from './VideoPlayer';
 import Visualizer from './Visualizer';
 import TimeSync from './TimeSync';
 import { ACTS, PROMPTS } from '../data';
-import { Flame, Leaf } from 'lucide-react';
+import { Flame, Leaf, Wand2 } from 'lucide-react';
 
 export default function Theater() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -41,7 +41,7 @@ export default function Theater() {
       {/* Header */}
       <header className="flex justify-between items-center px-10 py-6 z-20 border-b border-white/5 bg-black/40 backdrop-blur-md">
         <div className="flex items-center space-x-4">
-          <div className="text-red-600 font-black text-2xl tracking-tighter uppercase">NETFLIX</div>
+          <div className="text-red-600 font-black text-2xl tracking-tighter uppercase">NUTFLOX</div>
           <div className="h-5 w-[1px] bg-white/20"></div>
           <div className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/60">Original Special</div>
         </div>
@@ -51,6 +51,10 @@ export default function Theater() {
             <span>{isPlaying ? 'STREAM: ACTIVE' : 'STREAM: STANDBY'}</span>
           </div>
           <div className="px-3 py-1 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10">HDR</div>
+          <button className="flex items-center gap-2 px-4 py-2 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10 hover:bg-orange-500/20 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all">
+            <Wand2 className="w-4 h-4" />
+            <span>Generate Video</span>
+          </button>
         </div>
       </header>
 
