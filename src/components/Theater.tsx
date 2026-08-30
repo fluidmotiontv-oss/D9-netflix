@@ -156,31 +156,31 @@ export default function Theater() {
   };
 
   return (
-    <div className="h-screen w-full bg-[#020202] text-[#e0e0e0] font-sans flex flex-col relative overflow-hidden select-none">
+    <>
       {/* Background Ambience */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none z-0">
+      <div className="absolute inset-0 opacity-20 pointer-events-none z-0 col-span-full row-span-full">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-600 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900 rounded-full blur-[150px]"></div>
         <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0)", backgroundSize: "40px 40px" }}></div>
       </div>
 
       {/* Header */}
-      <header className="flex justify-between items-center px-10 py-6 z-20 border-b border-white/5 bg-black/40 backdrop-blur-md">
-        <div className="flex items-center space-x-4">
-          <div className="text-red-600 font-black text-2xl tracking-tighter uppercase">NUTFLOX</div>
-          <div className="h-5 w-[1px] bg-white/20"></div>
-          <div className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/60">Original Special</div>
+      <header className="col-span-1 lg:col-span-2 row-start-1 flex justify-between items-center px-4 lg:px-10 py-4 lg:py-6 z-20 border-b border-white/5 bg-black/40 backdrop-blur-md">
+        <div className="flex items-center space-x-2 lg:space-x-4">
+          <div className="text-red-600 font-black text-xl lg:text-2xl tracking-tighter uppercase">NUTFLOX</div>
+          <div className="h-4 lg:h-5 w-[1px] bg-white/20"></div>
+          <div className="text-[8px] lg:text-[10px] font-bold tracking-[0.2em] uppercase text-white/60 hidden sm:block">Original Special</div>
         </div>
-        <div className="flex items-center space-x-6 text-[10px] font-mono text-white/40 uppercase tracking-widest">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3 lg:space-x-6 text-[10px] font-mono text-white/40 uppercase tracking-widest">
+          <div className="flex items-center space-x-2 hidden md:flex">
             <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-orange-500 shadow-[0_0_8px_#f97316] animate-pulse' : 'bg-white/20'}`}></span>
             <span>{isPlaying ? 'STREAM: ACTIVE' : 'STREAM: STANDBY'}</span>
           </div>
-          <div className="px-3 py-1 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10">HDR</div>
+          <div className="px-2 lg:px-3 py-1 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10 hidden sm:block">HDR</div>
           
           <button
             onClick={() => setShowShortcuts(!showShortcuts)}
-            className={`flex items-center gap-2 px-3 py-2 border rounded transition-all ${showShortcuts ? 'border-orange-500 text-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-white/20 text-white/70 hover:bg-white/5'}`}
+            className={`flex items-center gap-2 px-2 lg:px-3 py-2 border rounded transition-all ${showShortcuts ? 'border-orange-500 text-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-white/20 text-white/70 hover:bg-white/5'}`}
             title="Shortcuts (?)"
           >
             <Keyboard className="w-4 h-4" />
@@ -188,7 +188,7 @@ export default function Theater() {
           
           <button
             onClick={handleExportAct}
-            className="flex items-center gap-2 px-3 py-2 border border-green-500/50 text-green-500 rounded bg-green-500/10 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all"
+            className="hidden sm:flex items-center gap-2 px-3 py-2 border border-green-500/50 text-green-500 rounded bg-green-500/10 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all"
             title="Export Act (E)"
           >
             <Download className="w-4 h-4" />
@@ -198,39 +198,37 @@ export default function Theater() {
           <button 
             onClick={handleGenerateAct}
             disabled={isGenerating}
-            className="flex items-center gap-2 px-4 py-2 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10 hover:bg-orange-500/20 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 lg:px-4 py-2 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10 hover:bg-orange-500/20 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Wand2 className="w-4 h-4" />
             )}
-            <span>{isGenerating ? 'Synthesizing...' : 'Generate New Act'}</span>
+            <span className="hidden sm:inline">{isGenerating ? 'Synthesizing...' : 'Generate New Act'}</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_450px] grid-rows-[1fr_50vh] lg:grid-rows-1 overflow-hidden z-10 relative">
-        {/* Left Side: Video & Visualizer */}
-        <div className="flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 relative lg:border-r border-white/5 overflow-y-auto lg:overflow-hidden min-h-0">
-          <div className={`flex-1 rounded-2xl overflow-hidden border border-white/10 bg-black/50 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative transition-all duration-300 min-h-[250px] ${isSmoking ? 'stoned-camera-active' : ''}`}>
-            <VideoPlayer 
-              isPlaying={isPlaying} 
-              setIsPlaying={setIsPlaying}
-              currentAct={currentAct}
-              onActComplete={handleActComplete}
-            />
-          </div>
-          
-          <div className="h-24 lg:h-32 shrink-0 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-2 text-[8px] font-mono opacity-30 uppercase">AUDIO_REACT_VISUALIZER</div>
-            <Visualizer isPlaying={isPlaying} />
-          </div>
+      {/* Main Content (Video & Visualizer) */}
+      <div className="col-span-1 lg:col-start-1 row-start-2 flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 relative lg:border-r border-white/5 overflow-y-auto lg:overflow-hidden min-h-0 z-10">
+        <div className={`flex-1 rounded-2xl overflow-hidden border border-white/10 bg-black/50 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative transition-all duration-300 min-h-[250px] ${isSmoking ? 'stoned-camera-active' : ''}`}>
+          <VideoPlayer 
+            isPlaying={isPlaying} 
+            setIsPlaying={setIsPlaying}
+            currentAct={currentAct}
+            onActComplete={handleActComplete}
+          />
         </div>
+        
+        <div className="h-24 lg:h-32 shrink-0 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-2 text-[8px] font-mono opacity-30 uppercase">AUDIO_REACT_VISUALIZER</div>
+          <Visualizer isPlaying={isPlaying} />
+        </div>
+      </div>
 
-        {/* Right Side: Sidebar Controls */}
-        <aside className="flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 bg-black/80 lg:bg-black/20 backdrop-blur-xl lg:backdrop-blur-md overflow-y-auto z-20 shadow-[0_-15px_40px_rgba(0,0,0,0.6)] lg:shadow-[-10px_0_30px_rgba(0,0,0,0.5)] border-t lg:border-t-0 lg:border-l border-white/10 min-h-0">
+      {/* Right Side / Bottom: Sidebar Controls */}
+      <aside className="col-span-1 lg:col-start-2 row-start-3 lg:row-start-2 flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 bg-black/80 lg:bg-black/20 backdrop-blur-xl lg:backdrop-blur-md overflow-y-auto z-20 shadow-[0_-15px_40px_rgba(0,0,0,0.6)] lg:shadow-[-10px_0_30px_rgba(0,0,0,0.5)] border-t lg:border-t-0 lg:border-l border-white/10 min-h-0 relative">
           {/* Title Area */}
           <div className="text-center py-4 border-b border-white/10">
             <h1 className="text-2xl font-black tracking-tight uppercase mb-1">
@@ -301,7 +299,6 @@ export default function Theater() {
             ))}
           </div>
         </aside>
-      </main>
 
       {/* Interstitial Purchase Modal */}
       <PurchaseModal 
@@ -348,6 +345,6 @@ export default function Theater() {
 
       {/* Global Special Effects Layer */}
       <StonerDragonEffects isSmoking={isSmoking} onComplete={() => setIsSmoking(false)} />
-    </div>
+    </>
   );
 }

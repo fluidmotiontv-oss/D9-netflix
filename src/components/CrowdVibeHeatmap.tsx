@@ -61,11 +61,11 @@ export default function CrowdVibeHeatmap({ progress, actId }: CrowdVibeHeatmapPr
       .enter()
       .append('rect')
       .attr('class', 'heatmap-bar')
-      .attr('x', d => xScale(d.time))
+      .attr('x', (d: any) => xScale(d.time))
       .attr('y', 0)
       .attr('width', rectWidth + 0.5) // +0.5 to prevent sub-pixel gaps
       .attr('height', height)
-      .attr('fill', d => colorScale(d.hits))
+      .attr('fill', (d: any) => colorScale(d.hits))
       .attr('opacity', 0.8);
 
     // Current progress marker

@@ -43,17 +43,22 @@ export default function VideoPlayer({ isPlaying, setIsPlaying, currentAct, onAct
     if (isPlaying && !currentAct.videoUrl) {
       interval = setInterval(() => {
         setProgress(p => {
-          if (p >= 100) {
-            setIsPlaying(false);
-            setTimeout(onActComplete, 0);
-            return 0;
-          }
-          return p + 0.2; // faster fake progress for demo
+          const next = p + 0.2; // faster fake progress for demo
+          return next >= 100 ? 100 : next;
         });
       }, 50);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, currentAct, onActComplete]);
+  }, [isPlaying, currentAct]);
+
+  // Handle completion for fake progress
+  useEffect(() => {
+    if (progress >= 100 && isPlaying && !currentAct.videoUrl) {
+      setIsPlaying(false);
+      setProgress(0);
+      onActComplete();
+    }
+  }, [progress, isPlaying, currentAct, setIsPlaying, onActComplete]);
 
   const handleTimeUpdate = () => {
     if (videoRef.current && currentAct.videoUrl) {
