@@ -48,23 +48,30 @@ export const ACTS = [
 export const PROMPTS = [
   {
     id: 'prompt-1',
-    title: 'Main Avatar / Stage Setup (Midjourney v6)',
+    title: 'Act 1: Veo 3.1 Fast Motion Directive',
     prompt:
-      'Stylized 2D/3D hybrid animated comedy special, a majestic humanoid dragon wearing a vintage oversized black hoodie smoking a blunt at a comedy club microphone, a large ornate glass bong on a stool next to him, thick stylized smoke framing the shot, neon rim lighting, dark void background with subtle floating geometric grid, Adult Swim animation aesthetic, cell-shaded, dynamic cinematic lighting --ar 16:9 --style raw --v 6.1',
-    icon: Aperture,
+      'Medium shot of animated dragon puffing a blunt, exhaling a thick cloud of stylized smoke that warps into a 54-minute fluid clock loop. 24fps cell-shaded animation, dark cyberpunk void.',
+    icon: Video,
   },
   {
     id: 'prompt-2',
-    title: 'I2V Motion Directive (Runway Gen-3 / Kling 1.5)',
+    title: 'Act 2: Veo 3 Motion Directive',
     prompt:
-      'Medium shot of animated dragon avatar talking into a microphone holding a glowing blunt, taking a puff and exhaling thick stylized smoke, expressive facial comedy timing, subtle background neon light pulse, steady camera, 24fps cell-shaded animation',
+      'Dragon using a glowing blunt to slice through liquid-chrome time frames, freezing smoke rings in mid-air around an audience in a dark void. Vibrant neon rim lighting.',
     icon: Video,
   },
   {
     id: 'prompt-3',
-    title: 'Key SFX Layering for NLE Timeline',
+    title: 'Audio TTS Synthesis Directives',
     prompt:
-      'Punchlines: Sub-bass drop + vinyl crackle stop.\nCrowd Reactions: Reverb-drenched, slightly distorted synth laughter.\nStage Transitions: Glitch risers and metallic whip-pan whooshes.',
+      'Voice Profile: Male New Zealand (en-NZ) neural voice. Low pitch, relaxed vocal fry on sentence endings.\nKey phrase delivery: "not ideal, eh?" (Slow cadence, dry tone).',
+    icon: AudioWaveform,
+  },
+  {
+    id: 'prompt-4',
+    title: 'SFX & Foley Layering',
+    prompt:
+      '40Hz sub-bass drops on punchlines.\nBong water bubbling (isolated stem).\nVinyl crackle fade out for transitions.',
     icon: Layers,
   },
 ];
