@@ -1,32 +1,158 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import VideoPlayer from './VideoPlayer';
 import Visualizer from './Visualizer';
 import TimeSync from './TimeSync';
+import PurchaseModal from './PurchaseModal';
+import StonerDragonEffects from './StonerDragonEffects';
 import { ACTS, PROMPTS } from '../data';
-import { Flame, Leaf, Wand2 } from 'lucide-react';
+import { Wand2, Loader2, Sparkles, Download, Keyboard } from 'lucide-react';
 
 export default function Theater() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [actsData, setActsData] = useState<any[]>(ACTS);
   const [currentAct, setCurrentAct] = useState(ACTS[0]);
   const [activeTab, setActiveTab] = useState<'acts' | 'prompts'>('acts');
+  const [isDragonTime, setIsDragonTime] = useState(false);
+  
+  // Custom Effects
+  const [isSmoking, setIsSmoking] = useState(false);
+  
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
   const [pendingAct, setPendingAct] = useState<any>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    const generatingActs = actsData.filter(a => a.status === 'generating_video' && a.operationName);
+    if (generatingActs.length === 0) return;
+
+    const interval = setInterval(async () => {
+      for (const act of generatingActs) {
+        try {
+          const res = await fetch('/api/video-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operationName: act.operationName })
+          });
+          const status = await res.json();
+          if (status.done) {
+            setActsData(prev => prev.map(a => 
+              a.id === act.id 
+                ? { ...a, status: 'ready', videoUrl: `/api/video-download?op=${encodeURIComponent(a.operationName)}` } 
+                : a
+            ));
+            
+            if (currentAct.id === act.id) {
+              setCurrentAct(prev => ({ ...prev, status: 'ready', videoUrl: `/api/video-download?op=${encodeURIComponent(act.operationName)}` }));
+            }
+          }
+        } catch(e) {
+          console.error('Polling error', e);
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [actsData, currentAct.id]);
+
+  const handleExportAct = () => {
+    const exportData = {
+      ...currentAct,
+      _meta: {
+        exportedAt: new Date().toISOString(),
+        supportedWithJoints: true,
+        message: "Thanks for supporting the temporal void with digital joints! Share this exported JSON act with your timeline."
+      }
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dragon9-act-${currentAct.id || 'export'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept typing in inputs
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      
+      if (e.key === ' ') {
+        e.preventDefault();
+        setIsPlaying(p => !p);
+      } else if (e.key.toLowerCase() === 's') {
+        setIsDragonTime(p => !p);
+      } else if (e.key.toLowerCase() === 'g') {
+        if (!isGenerating) handleGenerateAct();
+      } else if (e.key.toLowerCase() === 'e') {
+        handleExportAct();
+      } else if (e.key.toLowerCase() === 'b') {
+        if (!isSmoking) setIsSmoking(true);
+      } else if (e.key === '?') {
+        setShowShortcuts(p => !p);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
+
+  const triggerModal = (nextAct?: any) => {
+    setPendingAct(nextAct || null);
+    setShowModal(true);
+  };
 
   const handleActClick = (act: any) => {
     if (currentAct.id !== act.id) {
-      setPendingAct(act);
+      triggerModal(act);
     }
   };
 
+  const handleActComplete = () => {
+    const currentIndex = actsData.findIndex(a => a.id === currentAct.id);
+    const nextAct = actsData[currentIndex + 1];
+    triggerModal(nextAct);
+  };
+
   const handleConfirmPurchase = () => {
-    setCurrentAct(pendingAct);
+    if (pendingAct) setCurrentAct(pendingAct);
+    setShowModal(false);
     setPendingAct(null);
     setIsPlaying(true);
   };
 
   const handleSkip = () => {
-    setCurrentAct(pendingAct);
+    if (pendingAct) setCurrentAct(pendingAct);
+    setShowModal(false);
     setPendingAct(null);
     setIsPlaying(true);
+  };
+
+  const handleGenerateAct = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/generate-act', { method: 'POST' });
+      const newAct = await res.json();
+      
+      if (res.ok) {
+        newAct.icon = Sparkles; // Assign a default icon for generated acts
+        setActsData(prev => [...prev, newAct]);
+        setCurrentAct(newAct); // Immediately show the generating state
+        setActiveTab('acts');
+      } else {
+        alert(newAct.error || 'Failed to generate act');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error during generation');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -51,33 +177,60 @@ export default function Theater() {
             <span>{isPlaying ? 'STREAM: ACTIVE' : 'STREAM: STANDBY'}</span>
           </div>
           <div className="px-3 py-1 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10">HDR</div>
-          <button className="flex items-center gap-2 px-4 py-2 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10 hover:bg-orange-500/20 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all">
-            <Wand2 className="w-4 h-4" />
-            <span>Generate Video</span>
+          
+          <button
+            onClick={() => setShowShortcuts(!showShortcuts)}
+            className={`flex items-center gap-2 px-3 py-2 border rounded transition-all ${showShortcuts ? 'border-orange-500 text-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-white/20 text-white/70 hover:bg-white/5'}`}
+            title="Shortcuts (?)"
+          >
+            <Keyboard className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={handleExportAct}
+            className="flex items-center gap-2 px-3 py-2 border border-green-500/50 text-green-500 rounded bg-green-500/10 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all"
+            title="Export Act (E)"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export Act</span>
+          </button>
+
+          <button 
+            onClick={handleGenerateAct}
+            disabled={isGenerating}
+            className="flex items-center gap-2 px-4 py-2 border border-orange-500/50 text-orange-500 rounded bg-orange-500/10 hover:bg-orange-500/20 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Wand2 className="w-4 h-4" />
+            )}
+            <span>{isGenerating ? 'Synthesizing...' : 'Generate New Act'}</span>
           </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden z-10 relative">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_450px] grid-rows-[1fr_50vh] lg:grid-rows-1 overflow-hidden z-10 relative">
         {/* Left Side: Video & Visualizer */}
-        <div className="flex-1 flex flex-col p-6 space-y-6 relative border-r border-white/5">
-          <div className="flex-1 rounded-2xl overflow-hidden border border-white/10 bg-black/50 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative">
+        <div className="flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 relative lg:border-r border-white/5 overflow-y-auto lg:overflow-hidden min-h-0">
+          <div className={`flex-1 rounded-2xl overflow-hidden border border-white/10 bg-black/50 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative transition-all duration-300 min-h-[250px] ${isSmoking ? 'stoned-camera-active' : ''}`}>
             <VideoPlayer 
               isPlaying={isPlaying} 
               setIsPlaying={setIsPlaying}
               currentAct={currentAct}
+              onActComplete={handleActComplete}
             />
           </div>
           
-          <div className="h-32 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 relative overflow-hidden">
+          <div className="h-24 lg:h-32 shrink-0 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 relative overflow-hidden">
              <div className="absolute top-0 right-0 p-2 text-[8px] font-mono opacity-30 uppercase">AUDIO_REACT_VISUALIZER</div>
             <Visualizer isPlaying={isPlaying} />
           </div>
         </div>
 
         {/* Right Side: Sidebar Controls */}
-        <aside className="w-[450px] flex flex-col p-6 space-y-6 bg-black/20 backdrop-blur-md overflow-y-auto z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
+        <aside className="flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 bg-black/80 lg:bg-black/20 backdrop-blur-xl lg:backdrop-blur-md overflow-y-auto z-20 shadow-[0_-15px_40px_rgba(0,0,0,0.6)] lg:shadow-[-10px_0_30px_rgba(0,0,0,0.5)] border-t lg:border-t-0 lg:border-l border-white/10 min-h-0">
           {/* Title Area */}
           <div className="text-center py-4 border-b border-white/10">
             <h1 className="text-2xl font-black tracking-tight uppercase mb-1">
@@ -89,7 +242,7 @@ export default function Theater() {
           </div>
 
           {/* Time Sync Control */}
-          <TimeSync />
+          <TimeSync isDragonTime={isDragonTime} setIsDragonTime={setIsDragonTime} />
 
           {/* Navigation Tabs */}
           <div className="flex w-full border-b border-white/10 mt-4">
@@ -108,7 +261,7 @@ export default function Theater() {
           </div>
 
           <div className="space-y-4 flex-1">
-            {activeTab === 'acts' && ACTS.map((act, index) => (
+            {activeTab === 'acts' && actsData.map((act, index) => (
               <button
                 key={act.id}
                 onClick={() => handleActClick(act)}
@@ -151,40 +304,50 @@ export default function Theater() {
       </main>
 
       {/* Interstitial Purchase Modal */}
-      {pendingAct && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
-          <div className="bg-[#0a0a0a] border border-orange-500/50 rounded-2xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(249,115,22,0.2)] text-center relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-3 text-[10px] font-mono opacity-30 uppercase text-orange-500">SUPPORT_REQ</div>
-             
-             <div className="flex justify-center mb-6 relative">
-               <div className="w-20 h-20 bg-orange-500/10 rounded-full border border-orange-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)]">
-                 <Flame className="w-10 h-10 text-orange-500 animate-pulse absolute" />
-                 <Leaf className="w-5 h-5 text-green-500 absolute bottom-3 right-3 drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
-               </div>
-             </div>
+      <PurchaseModal 
+        isOpen={showModal} 
+        onConfirm={handleConfirmPurchase} 
+        onSkip={handleSkip} 
+      />
 
-             <h2 className="text-2xl font-black text-white uppercase tracking-widest mb-2">Pass the Blunt?</h2>
-             <p className="text-sm text-white/60 mb-8 leading-relaxed">
-               Support the Dragon's temporal void maintenance. Purchase a digital joint for <span className="text-green-400 font-bold">$1.00</span> before proceeding to the next act.
-             </p>
-
-             <div className="flex flex-col space-y-3">
-               <button 
-                 onClick={handleConfirmPurchase}
-                 className="w-full bg-orange-500/20 hover:bg-orange-500/40 border border-orange-500 text-orange-500 font-bold uppercase tracking-widest py-3 rounded-lg transition-all shadow-[0_0_15px_rgba(249,115,22,0.2)] hover:shadow-[0_0_25px_rgba(249,115,22,0.4)]"
-               >
-                 Buy a Joint ($1) & Continue
-               </button>
-               <button 
-                 onClick={handleSkip}
-                 className="w-full bg-transparent hover:bg-white/5 border border-white/20 text-white/50 hover:text-white uppercase text-xs tracking-widest py-3 rounded-lg transition-colors"
-               >
-                 Nah, I'm good
-               </button>
-             </div>
-          </div>
+      {/* Shortcuts Overlay */}
+      {showShortcuts && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-white/20 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-50 animate-in fade-in slide-in-from-top-4 w-96 text-center">
+          <h3 className="text-white font-black uppercase tracking-widest mb-6 flex items-center justify-center gap-2">
+            <Keyboard className="w-5 h-5 text-orange-500" />
+            Global Shortcuts
+          </h3>
+          <ul className="space-y-4 text-sm font-mono text-white/70">
+            <li className="flex justify-between items-center border-b border-white/5 pb-2">
+              <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[SPACE]</span>
+              <span>Play / Pause</span>
+            </li>
+            <li className="flex justify-between items-center border-b border-white/5 pb-2">
+              <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[S]</span>
+              <span>Sync Dragon Time</span>
+            </li>
+            <li className="flex justify-between items-center border-b border-white/5 pb-2">
+              <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[G]</span>
+              <span>Generate New Act</span>
+            </li>
+            <li className="flex justify-between items-center border-b border-white/5 pb-2">
+              <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[E]</span>
+              <span>Export Act JSON</span>
+            </li>
+            <li className="flex justify-between items-center border-b border-white/5 pb-2">
+              <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[B]</span>
+              <span>Hit the Bong</span>
+            </li>
+            <li className="flex justify-between items-center">
+              <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[?]</span>
+              <span>Toggle Shortcuts</span>
+            </li>
+          </ul>
         </div>
       )}
+
+      {/* Global Special Effects Layer */}
+      <StonerDragonEffects isSmoking={isSmoking} onComplete={() => setIsSmoking(false)} />
     </div>
   );
 }

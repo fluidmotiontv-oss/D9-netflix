@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function TimeSync() {
-  const [isDragonTime, setIsDragonTime] = useState(false);
+export default function TimeSync({ isDragonTime, setIsDragonTime }: { isDragonTime: boolean, setIsDragonTime: (v: boolean) => void }) {
   const [timeStr, setTimeStr] = useState('');
 
   useEffect(() => {
