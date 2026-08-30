@@ -1,0 +1,6 @@
+{
+  "name": "Dragon 9: Synchronise Time",
+  "description": "Pitch presentation for an animated stand-up special.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
