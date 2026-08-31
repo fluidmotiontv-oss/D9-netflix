@@ -72,6 +72,31 @@ export const LIGHTING_MOODS: Record<string, LightingMood> = {
     pulseSpeed: '2.2s',
     pattern: 'rainbow-cycle',
   },
+  'super-puff': {
+    id: 'super-puff-peak',
+    name: 'Super Puff Zen Bloom',
+    tone: 'Peaked Timing & Dreamy Purple-Orange Palette',
+    description: 'Subtle dreamlike purple and warm sunset-orange hue distortion matching Super Puff\'s ultra-relaxed comedic timing state.',
+    primary: '#a855f7',
+    secondary: '#f97316',
+    ambient: 'rgba(168, 85, 247, 0.38)',
+    accent: '#fdba74',
+    pulseSpeed: '6.2s',
+    pattern: 'breathing',
+  },
+};
+
+export const SUPER_PUFF_PEAK_MOOD: LightingMood = {
+  id: 'super-puff-peak',
+  name: 'Super Puff Zen Bloom',
+  tone: 'Peaked Timing & Dreamy Purple-Orange Palette',
+  description: 'Subtle dreamlike purple and warm sunset-orange hue distortion matching Super Puff\'s ultra-relaxed comedic timing state.',
+  primary: '#a855f7',
+  secondary: '#f97316',
+  ambient: 'rgba(168, 85, 247, 0.38)',
+  accent: '#fdba74',
+  pulseSpeed: '6.2s',
+  pattern: 'breathing',
 };
 
 export function getLightingMoodForAct(act: any): LightingMood {

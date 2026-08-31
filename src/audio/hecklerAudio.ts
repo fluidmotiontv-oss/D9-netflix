@@ -616,3 +616,66 @@ export function playTheatricalModeTransitionSfx(mode: 'stage' | 'workshop') {
   }
 }
 
+/**
+ * Dreamy Harmonic Shimmer & Sub-Bass Resonance when Super Puff's comedic timing peaks
+ * Lush purple-orange psychoacoustic timbre: Eb Major 9 chord + warm analog filter sweep
+ */
+export function playSuperPuffPeakChime(): void {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    // Master filter with warm analog resonance
+    const masterFilter = ctx.createBiquadFilter();
+    masterFilter.type = 'lowpass';
+    masterFilter.frequency.setValueAtTime(450, now);
+    masterFilter.frequency.exponentialRampToValueAtTime(3200, now + 0.7);
+    masterFilter.frequency.exponentialRampToValueAtTime(600, now + 2.8);
+    masterFilter.Q.setValueAtTime(3.5, now);
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.35, now);
+    masterGain.gain.exponentialRampToValueAtTime(0.001, now + 3.2);
+
+    masterFilter.connect(masterGain);
+    masterGain.connect(ctx.destination);
+
+    // Warm deep sub-bass fundamental (43.65 Hz / F1)
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(43.65, now);
+    subGain.gain.setValueAtTime(0.4, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 2.6);
+    subOsc.connect(subGain);
+    subGain.connect(ctx.destination);
+    subOsc.start(now);
+    subOsc.stop(now + 2.7);
+
+    // Dreamy Ebmaj9 / F# chord tones (Hz): 311.13 (Eb4), 392.00 (G4), 466.16 (Bb4), 587.33 (D5), 739.99 (F#5)
+    const chordFrequencies = [311.13, 392.00, 466.16, 587.33, 739.99, 932.33];
+    chordFrequencies.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      // Slight detune for lush purple-orange analog shimmer
+      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+      osc.detune.setValueAtTime((Math.random() - 0.5) * 12, now);
+
+      gain.gain.setValueAtTime(0, now + idx * 0.04);
+      gain.gain.linearRampToValueAtTime(0.18 / (idx + 1), now + idx * 0.04 + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 2.2 + idx * 0.15);
+
+      osc.connect(gain);
+      gain.connect(masterFilter);
+
+      osc.start(now + idx * 0.04);
+      osc.stop(now + 2.5 + idx * 0.15);
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+

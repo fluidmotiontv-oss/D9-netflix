@@ -17,6 +17,7 @@ interface AnimatedDragonPerformerProps {
   comedyRankTitle?: string;
   activeStrainName?: string;
   mode?: 'stage' | 'workshop';
+  isTimingPeaked?: boolean;
 }
 
 export default function AnimatedDragonPerformer({
@@ -33,6 +34,7 @@ export default function AnimatedDragonPerformer({
   comedyRankTitle = 'Timing Alchemist',
   activeStrainName = 'Cosmic OG (31.4% THC)',
   mode = 'stage',
+  isTimingPeaked = false,
 }: AnimatedDragonPerformerProps) {
   const [mouthOpen, setMouthOpen] = useState(false);
   const [blink, setBlink] = useState(false);
@@ -175,6 +177,19 @@ export default function AnimatedDragonPerformer({
             日本語・EN
           </span>
         </motion.button>
+
+        {/* Super Puff Peaked Timing Visual Indicator */}
+        {isTimingPeaked && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-purple-400/80 bg-gradient-to-r from-purple-900/60 via-purple-700/50 to-amber-600/50 backdrop-blur-md shadow-[0_0_25px_rgba(168,85,247,0.6)] font-mono text-[9px] font-bold uppercase tracking-wider text-purple-200 animate-pulse"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+            <span>SUPER PUFF TIMING: PEAKED (極上の間)</span>
+          </motion.div>
+        )}
 
         {/* Theatrical Mode / Rank Badge */}
         <motion.div 

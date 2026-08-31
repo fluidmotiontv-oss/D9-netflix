@@ -120,3 +120,57 @@
   animation: hueShiftCycle 8s linear infinite;
 }
 
+/* ================= SUPER PUFF PURPLE-ORANGE DREAM FILTER ================= */
+@keyframes superPuffBloomPulse {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(1);
+    filter: blur(40px) brightness(110%);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+    filter: blur(55px) brightness(125%);
+  }
+}
+
+@keyframes superPuffChromaticDrift {
+  0% {
+    filter: drop-shadow(-2px 0 6px rgba(168, 85, 247, 0.45)) drop-shadow(2px 0 6px rgba(249, 115, 22, 0.45)) saturate(125%);
+  }
+  50% {
+    filter: drop-shadow(2px -1px 8px rgba(168, 85, 247, 0.6)) drop-shadow(-2px 1px 8px rgba(249, 115, 22, 0.6)) saturate(145%);
+  }
+  100% {
+    filter: drop-shadow(-2px 0 6px rgba(168, 85, 247, 0.45)) drop-shadow(2px 0 6px rgba(249, 115, 22, 0.45)) saturate(125%);
+  }
+}
+
+@keyframes superPuffBokehFloat {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(0.8);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translateY(-40px) rotate(180deg) scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-80px) rotate(360deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+.super-puff-bloom {
+  animation: superPuffBloomPulse 6.4s ease-in-out infinite;
+}
+
+.super-puff-chromatic {
+  animation: superPuffChromaticDrift 4.8s ease-in-out infinite;
+}
+
+.super-puff-bokeh-orb {
+  animation: superPuffBokehFloat 7.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+
