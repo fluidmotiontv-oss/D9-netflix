@@ -5,7 +5,7 @@ import TimeSync from './TimeSync';
 import PurchaseModal from './PurchaseModal';
 import StonerDragonEffects from './StonerDragonEffects';
 import { ACTS, PROMPTS } from '../data';
-import { Wand2, Loader2, Sparkles, Download, Keyboard } from 'lucide-react';
+import { Wand2, Loader2, Sparkles, Download, Keyboard, Radio } from 'lucide-react';
 
 export default function Theater() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -13,6 +13,7 @@ export default function Theater() {
   const [currentAct, setCurrentAct] = useState(ACTS[0]);
   const [activeTab, setActiveTab] = useState<'acts' | 'prompts'>('acts');
   const [isDragonTime, setIsDragonTime] = useState(false);
+  const [isBroadcast, setIsBroadcast] = useState(false);
   
   // Custom Effects
   const [isSmoking, setIsSmoking] = useState(false);
@@ -21,6 +22,7 @@ export default function Theater() {
   const [showModal, setShowModal] = useState(false);
   const [pendingAct, setPendingAct] = useState<any>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [lastModalTime, setLastModalTime] = useState(0);
   
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -103,8 +105,16 @@ export default function Theater() {
   });
 
   const triggerModal = (nextAct?: any) => {
-    setPendingAct(nextAct || null);
-    setShowModal(true);
+    const now = Date.now();
+    const THREE_MINUTES = 3 * 60 * 1000;
+    if (now - lastModalTime >= THREE_MINUTES) {
+      setLastModalTime(now);
+      setPendingAct(nextAct || null);
+      setShowModal(true);
+    } else {
+      if (nextAct) setCurrentAct(nextAct);
+      setIsPlaying(true);
+    }
   };
 
   const handleActClick = (act: any) => {
@@ -114,6 +124,18 @@ export default function Theater() {
   };
 
   const handleActComplete = () => {
+    if (isBroadcast) {
+      const currentIndex = actsData.findIndex(a => a.id === currentAct.id);
+      const nextAct = actsData[currentIndex + 1];
+      if (nextAct) {
+        setCurrentAct(nextAct);
+        setIsPlaying(true);
+        setIsSmoking(true);
+      } else {
+        handleGenerateAct();
+      }
+      return;
+    }
     const currentIndex = actsData.findIndex(a => a.id === currentAct.id);
     const nextAct = actsData[currentIndex + 1];
     triggerModal(nextAct);
@@ -144,6 +166,10 @@ export default function Theater() {
         setActsData(prev => [...prev, newAct]);
         setCurrentAct(newAct); // Immediately show the generating state
         setActiveTab('acts');
+        if (isBroadcast) {
+          setIsPlaying(true);
+          setIsSmoking(true);
+        }
       } else {
         alert(newAct.error || 'Failed to generate act');
       }
@@ -172,6 +198,21 @@ export default function Theater() {
           <div className="text-[8px] lg:text-[10px] font-bold tracking-[0.2em] uppercase text-white/60 hidden sm:block">Original Special</div>
         </div>
         <div className="flex items-center space-x-3 lg:space-x-6 text-[10px] font-mono text-white/40 uppercase tracking-widest">
+          <button
+            onClick={() => {
+              const next = !isBroadcast;
+              setIsBroadcast(next);
+              if (next) {
+                setIsPlaying(true);
+                setIsSmoking(true);
+              }
+            }}
+            className={`flex items-center gap-2 px-3 py-1.5 border rounded transition-all font-mono uppercase text-xs ${isBroadcast ? 'border-red-500 text-red-500 bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-pulse' : 'border-white/20 text-white/70 hover:bg-white/5'}`}
+          >
+            <Radio className="w-4 h-4" />
+            <span className="hidden sm:inline">{isBroadcast ? '🔴 BROADCAST LIVE' : 'Broadcast Standby'}</span>
+          </button>
+
           <div className="flex items-center space-x-2 hidden md:flex">
             <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-orange-500 shadow-[0_0_8px_#f97316] animate-pulse' : 'bg-white/20'}`}></span>
             <span>{isPlaying ? 'STREAM: ACTIVE' : 'STREAM: STANDBY'}</span>
