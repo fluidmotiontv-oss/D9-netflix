@@ -1,6 +1,6 @@
 {
   "name": "Dragon 9: Synchronise Time",
-  "description": "Pitch presentation for an animated stand-up special.",
+  "description": "Interactive pitch presentation & live animated stand-up comedy special featuring Dragon 9, Comedy Archives joke mastery vault, Freestyle Workshop dialogue, and Heckler timing disruption rack.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

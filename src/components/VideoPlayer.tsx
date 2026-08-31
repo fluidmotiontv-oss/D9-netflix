@@ -1,24 +1,98 @@
-import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Maximize, Volume2, VolumeX, Settings, Share2, Twitter, MessageSquare, Check, Mic, Activity } from 'lucide-react';
+import React, { useState, useRef, useEffect, MouseEvent } from 'react';
+import { 
+  Play, 
+  Pause, 
+  Maximize, 
+  Volume2, 
+  VolumeX, 
+  Settings, 
+  Share2, 
+  Twitter, 
+  MessageSquare, 
+  Check, 
+  Mic, 
+  Activity, 
+  ShieldAlert, 
+  Sparkles,
+  Zap
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import CrowdVibeHeatmap from './CrowdVibeHeatmap';
+import AnimatedDragonPerformer from './AnimatedDragonPerformer';
+import { HeckleItem } from '../audio/hecklerAudio';
 
 interface VideoPlayerProps {
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
   currentAct: any;
   onActComplete: () => void;
+  activeHeckle?: HeckleItem | null;
+  roastDialogue?: string | null;
+  isRoasting?: boolean;
+  laserPos?: { x: number; y: number } | null;
+  setLaserPos?: (pos: { x: number; y: number } | null) => void;
+  hasTomatoSplat?: boolean;
+  setHasTomatoSplat?: (splat: boolean) => void;
+  onOpenHecklerRack?: () => void;
+  primaryColor?: string;
+  accentColor?: string;
+  comedyXp?: number;
+  comedyRankTitle?: string;
+  activeStrainName?: string;
+  mode?: 'stage' | 'workshop';
 }
 
-export default function VideoPlayer({ isPlaying, setIsPlaying, currentAct, onActComplete }: VideoPlayerProps) {
+export default function VideoPlayer({ 
+  isPlaying, 
+  setIsPlaying, 
+  currentAct, 
+  onActComplete,
+  activeHeckle = null,
+  roastDialogue = null,
+  isRoasting = false,
+  laserPos = null,
+  setLaserPos,
+  hasTomatoSplat = false,
+  setHasTomatoSplat,
+  onOpenHecklerRack,
+  primaryColor = '#ea580c',
+  accentColor = '#f59e0b',
+  comedyXp = 450,
+  comedyRankTitle = 'Timing Alchemist',
+  activeStrainName = 'Cosmic OG (31.4% THC)',
+  mode = 'stage',
+}: VideoPlayerProps) {
   const [progress, setProgress] = useState(0);
   const [muted, setMuted] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showCommentary, setShowCommentary] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isThrowingTomato, setIsThrowingTomato] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Trigger tomato throw projectile animation when a tomato heckle occurs
+  useEffect(() => {
+    if (activeHeckle?.id === 'tomato') {
+      setIsThrowingTomato(true);
+      const timer = setTimeout(() => {
+        setIsThrowingTomato(false);
+        if (setHasTomatoSplat) setHasTomatoSplat(true);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [activeHeckle, setHasTomatoSplat]);
+
+  // Handle stage mouse move for laser pointer tracking
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (activeHeckle?.id === 'laser' && containerRef.current && setLaserPos) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      setLaserPos({ x, y });
+    }
+  };
 
   // Sync state with HTML5 Video element if it exists
   useEffect(() => {
@@ -92,8 +166,46 @@ export default function VideoPlayer({ isPlaying, setIsPlaying, currentAct, onAct
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-black group flex flex-col justify-center items-center overflow-hidden">
+    <div 
+      ref={containerRef} 
+      onMouseMove={handleMouseMove}
+      className="w-full h-full relative bg-black group flex flex-col justify-center items-center overflow-hidden select-none"
+    >
       
+      {/* Animated Dragon Comedian Stage Layer */}
+      <AnimatedDragonPerformer
+        isPlaying={isPlaying}
+        activeHeckle={activeHeckle}
+        roastDialogue={roastDialogue}
+        isRoasting={isRoasting}
+        laserPos={laserPos}
+        hasTomatoSplat={hasTomatoSplat}
+        onClearTomato={() => setHasTomatoSplat && setHasTomatoSplat(false)}
+        primaryColor={primaryColor}
+        accentColor={accentColor}
+        comedyXp={comedyXp}
+        comedyRankTitle={comedyRankTitle}
+        activeStrainName={activeStrainName}
+        mode={mode}
+      />
+
+      {/* Throwing Tomato Flying Projectile Animation */}
+      <AnimatePresence>
+        {isThrowingTomato && (
+          <motion.div
+            initial={{ scale: 2.8, x: 250, y: 220, opacity: 0.9, rotate: 0 }}
+            animate={{ scale: 0.9, x: 0, y: 0, opacity: 1, rotate: 360 }}
+            exit={{ scale: 0.2, opacity: 0 }}
+            transition={{ duration: 0.35, ease: 'easeIn' }}
+            className="absolute z-50 pointer-events-none"
+          >
+            <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(220,38,38,0.8)] border-2 border-amber-300">
+              <span className="text-2xl">🍅</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         <motion.div
           key={currentAct.id}
@@ -120,7 +232,7 @@ export default function VideoPlayer({ isPlaying, setIsPlaying, currentAct, onAct
               <div className="absolute inset-0 bg-orange-900/20 mix-blend-color pointer-events-none" />
             </>
           ) : currentAct.status === 'generating_video' ? (
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-auto bg-black">
+            <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-auto bg-black/80">
               <div className="text-center transition-all duration-1000 scale-100 opacity-80 flex flex-col items-center">
                 <div className="w-[400px] h-[400px] bg-gradient-to-t from-blue-600 to-transparent rounded-full blur-[80px] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20 animate-pulse" />
                 <h2 className="text-4xl font-black text-white uppercase tracking-[0.5em] relative z-10 mix-blend-overlay">
@@ -132,20 +244,7 @@ export default function VideoPlayer({ isPlaying, setIsPlaying, currentAct, onAct
                 </div>
               </div>
             </div>
-          ) : (
-            /* Video Placeholder (Using the poster concept) */
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-auto">
-              <div className={`text-center transition-all duration-1000 ${isPlaying ? 'scale-105 opacity-60' : 'scale-100 opacity-30'}`}>
-                <div className="w-[400px] h-[400px] bg-gradient-to-t from-orange-600 to-transparent rounded-full blur-[80px] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20" />
-                <h2 className="text-4xl font-black text-white/50 uppercase tracking-[0.5em] relative z-10 mix-blend-overlay">
-                  {currentAct.title}
-                </h2>
-                <p className="text-orange-500/50 font-mono text-xs tracking-widest uppercase mt-4">
-                  [VEO_3_RENDER_TARGET]
-                </p>
-              </div>
-            </div>
-          )}
+          ) : null}
         </motion.div>
       </AnimatePresence>
 
@@ -153,9 +252,10 @@ export default function VideoPlayer({ isPlaying, setIsPlaying, currentAct, onAct
       {!isPlaying && (
         <button 
           onClick={togglePlay}
-          className="absolute z-20 w-20 h-20 bg-orange-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-orange-500/50 hover:bg-orange-500/40 hover:scale-110 transition-all shadow-[0_0_30px_rgba(249,115,22,0.3)]"
+          className="absolute z-20 w-16 sm:w-20 h-16 sm:h-20 bg-orange-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-orange-500/50 hover:bg-orange-500/40 hover:scale-110 transition-all shadow-[0_0_30px_rgba(249,115,22,0.3)]"
+          title="Play Set (Space)"
         >
-          <Play className="w-8 h-8 text-orange-500 ml-1" />
+          <Play className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 ml-1" />
         </button>
       )}
 
@@ -223,6 +323,19 @@ export default function VideoPlayer({ isPlaying, setIsPlaying, currentAct, onAct
             >
               <Activity className="w-5 h-5" />
             </button>
+
+            {onOpenHecklerRack && (
+              <button 
+                onClick={onOpenHecklerRack}
+                className="hover:text-red-400 text-red-500/80 transition-colors relative"
+                title="Trigger Heckler & Test Timing (H)"
+              >
+                <ShieldAlert className="w-5 h-5" />
+                {activeHeckle && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                )}
+              </button>
+            )}
 
             <button 
               onClick={() => setShowCommentary(!showCommentary)}

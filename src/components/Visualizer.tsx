@@ -1,6 +1,12 @@
 import { useEffect, useRef } from 'react';
+import { LightingMood } from '../lighting';
 
-export default function Visualizer({ isPlaying }: { isPlaying: boolean }) {
+interface VisualizerProps {
+  isPlaying: boolean;
+  currentMood?: LightingMood;
+}
+
+export default function Visualizer({ isPlaying, currentMood }: VisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -21,7 +27,15 @@ export default function Visualizer({ isPlaying }: { isPlaying: boolean }) {
       const numBars = 64;
       const barWidth = width / numBars;
 
-      ctx.fillStyle = '#ea580c'; // Orange-600
+      // Dynamic color gradient based on current lighting mood
+      const primary = currentMood?.primary || '#ea580c';
+      const secondary = currentMood?.secondary || '#f59e0b';
+      
+      const grad = ctx.createLinearGradient(0, 0, width, 0);
+      grad.addColorStop(0, primary);
+      grad.addColorStop(0.5, secondary);
+      grad.addColorStop(1, primary);
+      ctx.fillStyle = grad;
 
       for (let i = 0; i < numBars; i++) {
         // Generate pseudo-random wave if playing, flat line if not
@@ -63,7 +77,7 @@ export default function Visualizer({ isPlaying }: { isPlaying: boolean }) {
       cancelAnimationFrame(animationId);
       resizeObserver.disconnect();
     };
-  }, [isPlaying]);
+  }, [isPlaying, currentMood]);
 
   return (
     <canvas 
@@ -72,3 +86,4 @@ export default function Visualizer({ isPlaying }: { isPlaying: boolean }) {
     />
   );
 }
+
