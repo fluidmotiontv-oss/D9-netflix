@@ -7,6 +7,8 @@ import StonerDragonEffects from './StonerDragonEffects';
 import StageLighting from './StageLighting';
 import HecklerRack from './HecklerRack';
 import ComedyArchives from './ComedyArchives';
+import DrGreenThumbroGuide from './DrGreenThumbroGuide';
+import SovereignJointFactory from './SovereignJointFactory';
 import { 
   ACTS, 
   PROMPTS, 
@@ -41,22 +43,82 @@ import {
   Cannabis,
   GraduationCap,
   Award,
-  Layers
+  Layers,
+  FileJson,
+  Package
 } from 'lucide-react';
 
 export default function Theater() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [actsData, setActsData] = useState<any[]>(ACTS);
   const [currentAct, setCurrentAct] = useState(ACTS[0]);
-  const [activeTab, setActiveTab] = useState<'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts'>('acts');
+  const [activeTab, setActiveTab] = useState<'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft'>('acts');
   const [theatricalMode, setTheatricalMode] = useState<'stage' | 'workshop'>('stage');
   const [isDragonTime, setIsDragonTime] = useState(false);
   const [isBroadcast, setIsBroadcast] = useState(false);
+  const [isBrutalTruthMode, setIsBrutalTruthMode] = useState(false);
+
+  // Daily Auction State
+  const [auctionState, setAuctionState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dragon9_auction_state');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      ninePacksRemaining: 1440,
+      sixPacksRemaining: 6,
+      threePacksRemaining: 9,
+      ninePackPrice: 19.99,
+      sixPackPrice: 14.99,
+      threePackPrice: 9.99,
+      nextResetTime: Date.now() + 24 * 60 * 60 * 1000
+    };
+  });
+
+  const [auctionTimeLeft, setAuctionTimeLeft] = useState<string>('--:--:--');
+
+  useEffect(() => {
+    localStorage.setItem('dragon9_auction_state', JSON.stringify(auctionState));
+  }, [auctionState]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      if (now >= auctionState.nextResetTime) {
+        setAuctionState(prev => ({
+          ninePacksRemaining: 1440,
+          sixPacksRemaining: 6,
+          threePacksRemaining: 9,
+          ninePackPrice: prev.ninePackPrice + 9, // +$1 per joint
+          sixPackPrice: prev.sixPackPrice + 6,
+          threePackPrice: prev.threePackPrice + 3,
+          nextResetTime: now + 24 * 60 * 60 * 1000
+        }));
+      } else {
+        const diff = auctionState.nextResetTime - now;
+        const h = Math.floor(diff / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        setAuctionTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [auctionState.nextResetTime]);
+
+  const handlePurchasePack = (type: '9-pack' | '6-pack' | '3-pack') => {
+    setAuctionState(prev => {
+      const next = { ...prev };
+      if (type === '9-pack' && next.ninePacksRemaining > 0) next.ninePacksRemaining--;
+      if (type === '6-pack' && next.sixPacksRemaining > 0) next.sixPacksRemaining--;
+      if (type === '3-pack' && next.threePacksRemaining > 0) next.threePacksRemaining--;
+      return next;
+    });
+  };
 
   // Sync theatricalMode when activeTab changes
-  const handleTabChange = (tab: 'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts') => {
+  const handleTabChange = (tab: 'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft') => {
     setActiveTab(tab);
-    if (tab === 'archives') {
+    if (tab === 'archives' || tab === 'nft' || tab === 'thumbro') {
       setTheatricalMode('workshop');
     } else if (tab === 'acts') {
       setTheatricalMode('stage');
@@ -523,6 +585,19 @@ export default function Theater() {
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export</span>
+          </button>
+
+          <button
+            onClick={() => setIsBrutalTruthMode(prev => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg transition-all font-mono uppercase text-xs ${
+              isBrutalTruthMode
+                ? 'border-red-600 bg-red-600/20 text-red-400 shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-pulse'
+                : 'border-white/20 text-white/60 hover:bg-white/5 hover:text-white'
+            }`}
+            title="Brutal Truth Mode: Zero F's Given, Ruthless Unfiltered Roasts"
+          >
+            <Flame className={`w-3.5 h-3.5 ${isBrutalTruthMode ? 'text-red-500 fill-red-500' : 'text-white/50'}`} />
+            <span className="hidden md:inline">{isBrutalTruthMode ? '🔥 BRUTAL MODE: ON' : 'Brutal Mode'}</span>
           </button>
 
           <button
@@ -1002,6 +1077,26 @@ export default function Theater() {
                   onSelectStrain={setActiveStrain}
                 />
               </div>
+            )}
+
+            {activeTab === 'thumbro' && (
+              <DrGreenThumbroGuide
+                primaryColor={currentMood.primary}
+                accentColor={currentMood.accent}
+                onGainXp={(amount) => setComedyXp(prev => prev + amount)}
+                isBrutalTruthMode={isBrutalTruthMode}
+              />
+            )}
+
+            {activeTab === 'nft' && (
+              <SovereignJointFactory
+                primaryColor={currentMood.primary}
+                accentColor={currentMood.accent}
+                onGainXp={(amount) => setComedyXp(prev => prev + amount)}
+                auctionState={auctionState}
+                auctionTimeLeft={auctionTimeLeft}
+                onPurchasePack={handlePurchasePack}
+              />
             )}
           </div>
         </aside>

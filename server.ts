@@ -115,6 +115,95 @@ async function startServer() {
     }
   });
 
+  app.post('/api/compile-knowledge', async (req, res) => {
+    try {
+      const { isBrutal } = req.body || {};
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        const ai = new GoogleGenAI({ apiKey });
+        const prompt = isBrutal
+          ? `Act as Dr. Green Thumbro & Dragon 9 in BRUTAL TRUTH MODE (zero f's given, completely ruthless, savage, uncompromising stoner philosopher & brutal roast comic).
+          Generate a new structured JSON collection of savage roast insights, unfiltered comedy truths, and brutal tactical roast protocols.
+          Return ONLY valid JSON in this exact structure:
+          {
+            "filename": "brutal_truth_protocol_v5.json",
+            "title": "Title of Savage Dataset",
+            "description": "Brief description of the brutal dataset",
+            "version": "2.0.0",
+            "author": "Dr. Green Thumbro (Unfiltered)",
+            "category": "roasts",
+            "payload": {
+              "savage_insights": ["Insight 1", "Insight 2"],
+              "brutal_truths": ["Truth 1", "Truth 2"],
+              "roast_coefficients": { "savagery": 100 }
+            }
+          }`
+          : `Act as Dr. Green Thumbro & Dragon 9, master stoner philosophers and comedy writers.
+          Generate a new structured JSON collection of stoner comedy knowledge, guru advice, and quantum rolling blueprints.
+          Return ONLY valid JSON in this exact structure:
+          {
+            "filename": "thumbro_quantum_wisdom_v5.json",
+            "title": "Title of Dataset",
+            "description": "Brief description of the dataset",
+            "version": "1.0.0",
+            "author": "Dr. Green Thumbro",
+            "category": "wisdom",
+            "payload": {
+              "guru_insights": ["Insight 1", "Insight 2"],
+              "joke_premises": ["Premise 1", "Premise 2"],
+              "terpene_constants": { "myrcene": 99.1 }
+            }
+          }`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.7-flash',
+          contents: prompt,
+          config: { responseMimeType: 'application/json' }
+        });
+
+        const data = JSON.parse(response.text || '{}');
+        data.id = 'json-gen-' + Date.now();
+        data.driftSpeed = 20;
+        data.driftDelay = 1;
+        return res.json(data);
+      } else {
+        throw new Error('No API key');
+      }
+    } catch (e) {
+      const rnd = Date.now().toString().slice(-3);
+      const isBrutal = req.body?.isBrutal;
+      res.json({
+        id: 'json-gen-' + Date.now(),
+        filename: isBrutal ? `brutal_truth_protocol_${rnd}.json` : `guru_stoner_masterclass_${rnd}.json`,
+        title: isBrutal ? `Brutal Truth Protocol Vol. ${rnd}` : `Dr. Green Thumbro Quantum Insights Vol. ${rnd}`,
+        description: isBrutal ? 'Zero f\'s given savage roasts, unfiltered comedy destruction, and brutal reality checks.' : 'AI-synthesized cannabis botany, 54-minute time deconstruction, and advanced stand-up punchline harmonics.',
+        version: isBrutal ? '2.0.0' : '1.0.0',
+        author: isBrutal ? 'Dr. Green Thumbro (Unfiltered)' : 'Dr. Green Thumbro',
+        category: isBrutal ? 'roasts' : 'wisdom',
+        payload: isBrutal ? {
+          compilation_timestamp: new Date().toISOString(),
+          brutal_truths: [
+            "Your material is weaker than a pre-roll rolled by a toddler in the dark.",
+            "If the crowd isn't laughing, it's not the acoustics—you just suck.",
+            "Stop blaming hecklers for your lack of an actual premise."
+          ],
+          savagery_metrics: {
+            filter_level: 0,
+            roast_potency: "Nuclear"
+          }
+        } : {
+          compilation_timestamp: new Date().toISOString(),
+          guru_axioms: [
+            "A heavy bassline cures 90% of awkward stage silence.",
+            "Always roll your thoughts as tight as a fine Japanese washi paper."
+          ]
+        },
+        driftSpeed: 22,
+        driftDelay: 0
+      });
+    }
+  });
+
   app.post('/api/video-status', async (req, res) => {
     try {
       const opName = req.body.operationName;
