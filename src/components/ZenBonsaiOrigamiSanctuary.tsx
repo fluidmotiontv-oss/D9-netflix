@@ -789,7 +789,7 @@ export default function ZenBonsaiOrigamiSanctuary({
                               scaleY: [1, 0.88, 1],
                               y: [0, -4, 0]
                             } : {}}
-                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                            transition={{ type: 'tween', duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
                           >
                             {/* Main Body Diamond */}
                             <polygon points="0,-50 25,0 0,40 -25,0" fill={grad} stroke={strokeCol} strokeWidth="1.5" />
@@ -801,6 +801,7 @@ export default function ZenBonsaiOrigamiSanctuary({
                               stroke={strokeCol} 
                               strokeWidth="1.5"
                               animate={isFlappingWings ? { rotate: [0, -5, 0] } : {}}
+                              transition={{ type: 'tween', duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
                             />
                             {/* Left Wing Under-Shade */}
                             <polygon points="0,-30 -80,-40 -25,0" fill="#ffffff" opacity="0.25" />
@@ -812,6 +813,7 @@ export default function ZenBonsaiOrigamiSanctuary({
                               stroke={strokeCol} 
                               strokeWidth="1.5"
                               animate={isFlappingWings ? { rotate: [0, 5, 0] } : {}}
+                              transition={{ type: 'tween', duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
                             />
                             {/* Right Wing Under-Shade */}
                             <polygon points="0,-30 80,-40 25,0" fill="#ffffff" opacity="0.25" />

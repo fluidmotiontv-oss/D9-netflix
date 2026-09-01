@@ -281,7 +281,7 @@ export default function AnimatedDragonPerformer({
           opacity: 1,
           scale: reaction === 'smoke_blast' ? 1.06 : 1,
           x: reaction === 'dodge' ? -45 : laserPos ? (laserPos.x - 50) * 0.15 : swayOffset,
-          y: reaction === 'dodge' ? 35 : (isPlaying ? [0, -4, 0] : 0),
+          y: reaction === 'dodge' ? 35 : (isPlaying ? -4 : 0),
           rotate: reaction === 'dodge' ? -8 : reaction === 'eyebrow_raise' ? 3 : (mode === 'workshop' ? -1.5 : 0),
         }}
         transition={{
@@ -349,89 +349,124 @@ export default function AnimatedDragonPerformer({
           ) : null}
         </AnimatePresence>
 
-        {/* 2.5D Cell-Shaded Animated Super Puff Dragon Graphic */}
+        {/* 2.5D Cell-Shaded Animated Super Puff Dragon Graphic - Vibrant & High Visibility */}
         <svg 
           viewBox="0 0 320 380" 
           className="w-64 sm:w-80 h-72 sm:h-96 filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)] transition-transform duration-500"
         >
           <defs>
-            {/* Dragon Skin Gradients */}
+            {/* Super Puff Vibrant Radiant Dragon Skin Gradients */}
             <linearGradient id="dragonSkin" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e3a2b" />
-              <stop offset="50%" stopColor="#0f261a" />
-              <stop offset="100%" stopColor="#08140e" />
+              <stop offset="0%" stopColor="#22c55e" />
+              <stop offset="35%" stopColor="#16a34a" />
+              <stop offset="70%" stopColor="#15803d" />
+              <stop offset="100%" stopColor="#14532d" />
+            </linearGradient>
+
+            <linearGradient id="dragonHeadGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#4ade80" />
+              <stop offset="40%" stopColor="#16a34a" />
+              <stop offset="85%" stopColor="#15803d" />
+              <stop offset="100%" stopColor="#0f4625" />
             </linearGradient>
 
             <linearGradient id="dragonScales" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#15803d" stopOpacity="0.1" />
+              <stop offset="0%" stopColor="#86efac" stopOpacity="0.85" />
+              <stop offset="40%" stopColor="#4ade80" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.25" />
             </linearGradient>
 
             <linearGradient id="dragonHorn" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f59e0b" />
-              <stop offset="100%" stopColor="#78350f" />
+              <stop offset="0%" stopColor="#fef08a" />
+              <stop offset="35%" stopColor="#f59e0b" />
+              <stop offset="75%" stopColor="#d97706" />
+              <stop offset="100%" stopColor="#92400e" />
             </linearGradient>
 
             <linearGradient id="goldChainGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#f59e0b" />
-              <stop offset="50%" stopColor="#fef08a" />
+              <stop offset="0%" stopColor="#fef08a" />
+              <stop offset="40%" stopColor="#fbbf24" />
+              <stop offset="70%" stopColor="#f59e0b" />
               <stop offset="100%" stopColor="#d97706" />
             </linearGradient>
 
             <linearGradient id="sunglassesGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#1e1b4b" />
-              <stop offset="60%" stopColor="#09090b" />
-              <stop offset="100%" stopColor="#172554" />
+              <stop offset="0%" stopColor="#312e81" />
+              <stop offset="50%" stopColor="#1e1b4b" />
+              <stop offset="100%" stopColor="#0f172a" />
             </linearGradient>
 
             <linearGradient id="bluntGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#78350f" />
-              <stop offset="85%" stopColor="#ea580c" />
-              <stop offset="100%" stopColor="#ef4444" />
+              <stop offset="0%" stopColor="#92400e" />
+              <stop offset="70%" stopColor="#ea580c" />
+              <stop offset="100%" stopColor="#f97316" />
             </linearGradient>
 
             <radialGradient id="cherryFire" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#ffedd5" />
-              <stop offset="40%" stopColor="#f97316" />
-              <stop offset="100%" stopColor="#b91c1c" />
+              <stop offset="0%" stopColor="#fff7ed" />
+              <stop offset="35%" stopColor="#f97316" />
+              <stop offset="75%" stopColor="#dc2626" />
+              <stop offset="100%" stopColor="#7f1d1d" />
+            </radialGradient>
+
+            <radialGradient id="dragonAura" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stopColor="#4ade80" stopOpacity="0.25" />
+              <stop offset="50%" stopColor="#22c55e" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#15803d" stopOpacity="0" />
             </radialGradient>
           </defs>
 
-          {/* Dragon Back Spikes */}
-          <path d="M 120 70 L 95 45 L 125 60 Z" fill="url(#dragonHorn)" stroke="#000" strokeWidth="2" />
-          <path d="M 105 110 L 75 90 L 110 105 Z" fill="url(#dragonHorn)" stroke="#000" strokeWidth="2" />
-          <path d="M 95 160 L 60 145 L 100 155 Z" fill="url(#dragonHorn)" stroke="#000" strokeWidth="2" />
+          {/* Luminous Ambient Dragon Aura */}
+          <circle cx="160" cy="180" r="140" fill="url(#dragonAura)" className="animate-pulse" />
+
+          {/* Dragon Back Spikes - Golden Amber Edges */}
+          <path d="M 120 70 L 95 45 L 125 60 Z" fill="url(#dragonHorn)" stroke="#451a03" strokeWidth="1.5" />
+          <path d="M 105 110 L 75 90 L 110 105 Z" fill="url(#dragonHorn)" stroke="#451a03" strokeWidth="1.5" />
+          <path d="M 95 160 L 60 145 L 100 155 Z" fill="url(#dragonHorn)" stroke="#451a03" strokeWidth="1.5" />
 
           {/* Majestic Curved Dragon Horns */}
           <path 
             d="M 140 75 Q 110 20 80 15 Q 110 45 130 85 Z" 
             fill="url(#dragonHorn)" 
-            stroke="#000" 
-            strokeWidth="3"
+            stroke="#451a03" 
+            strokeWidth="2.5"
           />
+          {/* Horn Ridge Highlight */}
+          <path d="M 135 70 Q 112 28 85 18" stroke="#fef08a" strokeWidth="1.5" fill="none" strokeLinecap="round" />
           <path 
             d="M 180 75 Q 210 20 240 15 Q 210 45 190 85 Z" 
             fill="url(#dragonHorn)" 
-            stroke="#000" 
-            strokeWidth="3"
+            stroke="#451a03" 
+            strokeWidth="2.5"
           />
+          {/* Right Horn Ridge Highlight */}
+          <path d="M 185 70 Q 208 28 235 18" stroke="#fef08a" strokeWidth="1.5" fill="none" strokeLinecap="round" />
 
           {/* Dragon Body & Chest */}
           <path 
             d="M 100 240 C 90 320, 80 370, 70 380 L 250 380 C 240 370, 230 320, 220 240 Z" 
             fill="url(#dragonSkin)" 
-            stroke="#000" 
-            strokeWidth="3"
+            stroke="#052e16" 
+            strokeWidth="2.5"
           />
+
+          {/* Body Shoulder Specular Highlights */}
+          <path d="M 105 245 Q 92 310 82 360" stroke="#86efac" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.65" />
+          <path d="M 215 245 Q 228 310 238 360" stroke="#86efac" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.65" />
 
           {/* Chest Underbelly Scales with Neon Rim Light */}
           <path 
             d="M 125 240 Q 160 260 195 240 Q 205 320 190 380 L 130 380 Q 115 320 125 240 Z" 
             fill="url(#dragonScales)" 
-            stroke={mode === 'stage' ? primaryColor : '#10b981'} 
-            strokeWidth="1.5"
+            stroke={mode === 'stage' ? primaryColor : '#4ade80'} 
+            strokeWidth="2"
             strokeDasharray="4 3"
           />
+
+          {/* Individual Scales Rows */}
+          <path d="M 135 270 Q 160 282 185 270" stroke="#86efac" strokeWidth="1.5" fill="none" opacity="0.75" />
+          <path d="M 132 300 Q 160 312 188 300" stroke="#86efac" strokeWidth="1.5" fill="none" opacity="0.75" />
+          <path d="M 130 330 Q 160 342 190 330" stroke="#86efac" strokeWidth="1.5" fill="none" opacity="0.75" />
 
           {/* Super Puff Thick Heavy Gold Chain with Big Clock Medallion */}
           <g transform="translate(0, 0)">
@@ -465,25 +500,34 @@ export default function AnimatedDragonPerformer({
             <line x1="18" y1="-4" x2="21" y2="10" stroke="#f59e0b" strokeWidth="1.5" />
           </g>
 
-          {/* Dragon Neck */}
+          {/* Dragon Neck with Emerald Lighting */}
           <path 
             d="M 120 180 L 115 245 L 205 245 L 200 180 Z" 
             fill="url(#dragonSkin)" 
-            stroke="#000" 
-            strokeWidth="3"
+            stroke="#052e16" 
+            strokeWidth="2.5"
           />
+          <path d="M 122 185 L 118 240" stroke="#86efac" strokeWidth="2" fill="none" opacity="0.6" strokeLinecap="round" />
+          <path d="M 198 185 L 202 240" stroke="#86efac" strokeWidth="2" fill="none" opacity="0.6" strokeLinecap="round" />
 
-          {/* Dragon Head Structure */}
+          {/* Dragon Head Structure with Vibrant Jade-Emerald Gradient */}
           <path 
             d="M 115 130 Q 110 75 160 75 Q 210 75 205 130 Q 225 155 210 190 Q 160 215 110 190 Q 95 155 115 130 Z" 
-            fill="url(#dragonSkin)" 
-            stroke="#000" 
-            strokeWidth="3.5"
+            fill="url(#dragonHeadGrad)" 
+            stroke="#052e16" 
+            strokeWidth="2.5"
           />
 
-          {/* Expressive Snout & Nostrils */}
-          <ellipse cx="145" cy="165" rx="4" ry="7" fill="#050d09" />
-          <ellipse cx="175" cy="165" rx="4" ry="7" fill="#050d09" />
+          {/* Forehead & Brow Specular Ridge */}
+          <path d="M 125 90 Q 160 80 195 90" stroke="#bbf7d0" strokeWidth="2.5" fill="none" opacity="0.75" strokeLinecap="round" />
+          {/* Cheekbone Highlights */}
+          <ellipse cx="112" cy="155" rx="6" ry="12" fill="#4ade80" opacity="0.5" transform="rotate(-15 112 155)" />
+          <ellipse cx="208" cy="155" rx="6" ry="12" fill="#4ade80" opacity="0.5" transform="rotate(15 208 155)" />
+
+          {/* Expressive Snout & Nostrils with Upper Bridge Glint */}
+          <path d="M 132 155 Q 160 142 188 155" stroke="#bbf7d0" strokeWidth="2" fill="none" opacity="0.8" strokeLinecap="round" />
+          <ellipse cx="145" cy="165" rx="5" ry="7" fill="#052e16" stroke="#4ade80" strokeWidth="1" />
+          <ellipse cx="175" cy="165" rx="5" ry="7" fill="#052e16" stroke="#4ade80" strokeWidth="1" />
 
           {/* Nostril Smoke Wisps */}
           {(isPlaying || isRoasting || mode === 'workshop') && (

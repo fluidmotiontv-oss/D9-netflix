@@ -821,7 +821,16 @@ export default function Theater() {
                 onUpdateArchive={handleUpdateArchive}
                 onAddArchiveItem={handleAddArchiveItem}
                 onRehearseJoke={(item) => {
-                  setComedyXp(prev => prev + 20);
+                  setComedyXp(prev => prev + 35);
+                  setIsRoasting(true);
+                  setRoastDialogue(`${item.title}: "${item.punchline}"`);
+                  setTimeout(() => {
+                    playCrowdLaughterSfx();
+                    setTimeout(() => {
+                      setIsRoasting(false);
+                      setRoastDialogue(null);
+                    }, 5000);
+                  }, 2200);
                 }}
                 primaryColor={currentMood.primary}
                 accentColor={currentMood.accent}

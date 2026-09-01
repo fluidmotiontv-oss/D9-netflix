@@ -40,7 +40,8 @@ import {
   TrendingUp,
   Flower2,
   Scissors,
-  Maximize2
+  Maximize2,
+  Play
 } from 'lucide-react';
 
 interface ComedyArchivesProps {
@@ -100,6 +101,9 @@ export default function ComedyArchives({
   // Note editing state: [itemId]: boolean
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<string>('');
+
+  // Active Performing Joke ID (triggers TTS narration and performer animation)
+  const [performingJokeId, setPerformingJokeId] = useState<string | null>(null);
 
   // New Joke Modal State
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -184,29 +188,48 @@ export default function ComedyArchives({
     }));
   };
 
-  // Rehearse a Joke live
-  const handleRehearse = (item: ComedyArchiveItem) => {
+  // Perform a Stored Joke (Triggers Text-to-Speech Narration + Performer Animation State Change)
+  const handlePerformJoke = (item: ComedyArchiveItem) => {
+    setPerformingJokeId(item.id);
     playMasteryChimeSfx('punchline');
-    
-    // Dragon speaks punchline
-    const speechText = item.punchline.replace(/"/g, '').replace(/\*/g, '');
-    speakHeckle(speechText, true);
+
+    const cleanPremise = item.premise.replace(/"/g, '').replace(/\*/g, '');
+    const cleanPunchline = item.punchline.replace(/"/g, '').replace(/\*/g, '');
+
+    // Step 1: Speak setup premise first
+    speakHeckle(cleanPremise, true);
+
+    // Trigger Performer animation & stage dialogue bubble state change immediately
+    if (onRehearseJoke) onRehearseJoke(item);
+
+    // Step 2: After natural comedic timing pause, deliver the punchline
+    setTimeout(() => {
+      speakHeckle(cleanPunchline, true);
+
+      // Step 3: Trigger crowd laughter & victory chime
+      setTimeout(() => {
+        playCrowdLaughterSfx();
+      }, 1600);
+    }, 2200);
 
     // Increment rehearsal count & award XP
     const updated: ComedyArchiveItem = {
       ...item,
       rehearsalCount: item.rehearsalCount + 1,
-      lastWorkshopped: 'Rehearsal Stage',
+      lastWorkshopped: 'Live Archive Performance',
     };
     onUpdateArchive(updated);
-    if (onGainXp) onGainXp(20);
+    if (onGainXp) onGainXp(35);
 
-    if (onRehearseJoke) onRehearseJoke(item);
-
-    // Delayed crowd chuckle
+    // Clear performing state after delivery
     setTimeout(() => {
-      playCrowdLaughterSfx();
-    }, 1400);
+      setPerformingJokeId(null);
+    }, 5500);
+  };
+
+  // Rehearse a Joke live (alias to handlePerformJoke)
+  const handleRehearse = (item: ComedyArchiveItem) => {
+    handlePerformJoke(item);
   };
 
   // Save Note edit
@@ -852,44 +875,63 @@ When you merge Japanese precision with dry Kiwi timing: "盆栽を見ろ、無�
                         </div>
                       </div>
 
-                      {/* Right Controls: Mastery Toggle & Accordion Button */}
+                      {/* Right Controls: Perform Button, Mastery Toggle & Accordion Button */}
                       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        {/* PROMINENT PERFORM BUTTON */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePerformJoke(item);
+                          }}
+                          disabled={performingJokeId === item.id}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-black uppercase transition-all flex items-center gap-1.5 shadow-sm ${
+                            performingJokeId === item.id
+                              ? 'bg-amber-400 text-black border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.8)] animate-pulse'
+                              : 'bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-amber-600/25 hover:from-amber-500/40 hover:to-orange-500/40 border-amber-400/50 text-amber-200 hover:text-white hover:border-amber-400 hover:shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                          }`}
+                          title="Perform joke with speech narration and stage animation (+35 XP)"
+                        >
+                          {performingJokeId === item.id ? (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5 animate-spin text-black" />
+                              <span>Performing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                              <span>Perform</span>
+                            </>
+                          )}
+                        </button>
+
                         {/* TOGGLE MASTERY BUTTON */}
                         <button
                           onClick={() => handleToggleMastery(item)}
                           className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-black uppercase transition-all flex items-center gap-1.5 ${
                             isMastered
                               ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 hover:bg-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                              : 'bg-amber-500/20 border-amber-400 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                              : 'bg-white/5 border-white/20 text-white/60 hover:bg-white/10 hover:text-white'
                           }`}
                           title={`Click to mark as ${isMastered ? 'Needs Practice' : 'Mastered'}`}
                         >
                           {isMastered ? (
                             <>
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Mastered</span>
+                              <span className="hidden sm:inline">Mastered</span>
                             </>
                           ) : (
                             <>
                               <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Needs Practice</span>
+                              <span className="hidden sm:inline">Practice</span>
                             </>
                           )}
-                        </button>
-
-                        {/* Rehearse Audio Trigger */}
-                        <button
-                          onClick={() => handleRehearse(item)}
-                          className="p-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/15 text-white/80 transition-colors"
-                          title="Rehearse punchline with Dragon 9 audio (+20 XP)"
-                        >
-                          <Volume2 className="w-4 h-4 text-amber-300" />
                         </button>
 
                         {/* Expand / Collapse Button */}
                         <button
                           onClick={() => toggleCard(item.id)}
                           className="p-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/15 text-white/80 transition-colors"
+                          title={isExpanded ? 'Collapse details' : 'Expand details'}
                         >
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
@@ -1012,13 +1054,27 @@ When you merge Japanese precision with dry Kiwi timing: "盆栽を見ろ、無�
                               <span>Workshop in Freestyle</span>
                             </button>
 
-                            {/* Rehearse Button */}
+                            {/* Perform Routine Button */}
                             <button
-                              onClick={() => handleRehearse(item)}
-                              className="px-3 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-all"
+                              onClick={() => handlePerformJoke(item)}
+                              disabled={performingJokeId === item.id}
+                              className={`px-3 py-1 rounded-lg border text-[10px] font-bold flex items-center gap-1.5 transition-all ${
+                                performingJokeId === item.id
+                                  ? 'bg-amber-400 text-black border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.8)] animate-pulse'
+                                  : 'border-emerald-500/40 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
+                              }`}
                             >
-                              <Mic2 className="w-3 h-3" />
-                              <span>Rehearse Voice (+20 XP)</span>
+                              {performingJokeId === item.id ? (
+                                <>
+                                  <Sparkles className="w-3 h-3 animate-spin text-black" />
+                                  <span>Performing Live...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-3 h-3 fill-emerald-300 text-emerald-300" />
+                                  <span>Perform Routine (+35 XP)</span>
+                                </>
+                              )}
                             </button>
                           </div>
                         </div>
