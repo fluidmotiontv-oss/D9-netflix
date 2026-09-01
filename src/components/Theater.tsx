@@ -9,6 +9,7 @@ import HecklerRack from './HecklerRack';
 import ComedyArchives from './ComedyArchives';
 import DrGreenThumbroGuide from './DrGreenThumbroGuide';
 import SovereignJointFactory from './SovereignJointFactory';
+import NutfloxParadigm from './NutfloxParadigm';
 import { 
   ACTS, 
   PROMPTS, 
@@ -52,7 +53,7 @@ export default function Theater() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [actsData, setActsData] = useState<any[]>(ACTS);
   const [currentAct, setCurrentAct] = useState(ACTS[0]);
-  const [activeTab, setActiveTab] = useState<'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft'>('acts');
+  const [activeTab, setActiveTab] = useState<'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox'>('acts');
   const [theatricalMode, setTheatricalMode] = useState<'stage' | 'workshop'>('stage');
   const [isDragonTime, setIsDragonTime] = useState(false);
   const [isBroadcast, setIsBroadcast] = useState(false);
@@ -116,7 +117,7 @@ export default function Theater() {
   };
 
   // Sync theatricalMode when activeTab changes
-  const handleTabChange = (tab: 'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft') => {
+  const handleTabChange = (tab: 'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox') => {
     setActiveTab(tab);
     if (tab === 'archives' || tab === 'nft' || tab === 'thumbro') {
       setTheatricalMode('workshop');
@@ -823,6 +824,30 @@ export default function Theater() {
              >
                Prompts
              </button>
+             <button
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap ${
+                 activeTab === 'nft' ? 'text-white font-bold' : 'border-transparent text-white/50 hover:text-white'
+               }`}
+               style={{
+                 borderColor: activeTab === 'nft' ? currentMood.primary : 'transparent',
+                 color: activeTab === 'nft' ? currentMood.accent : undefined,
+               }}
+               onClick={() => handleTabChange('nft')}
+             >
+               Sovereign
+             </button>
+             <button
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap ${
+                 activeTab === 'nutflox' ? 'text-white font-bold' : 'border-transparent text-white/50 hover:text-white'
+               }`}
+               style={{
+                 borderColor: activeTab === 'nutflox' ? currentMood.primary : 'transparent',
+                 color: activeTab === 'nutflox' ? currentMood.accent : undefined,
+               }}
+               onClick={() => handleTabChange('nutflox')}
+             >
+               Nutflox
+             </button>
           </div>
 
           <div className="space-y-4 flex-1">
@@ -1097,6 +1122,10 @@ export default function Theater() {
                 auctionTimeLeft={auctionTimeLeft}
                 onPurchasePack={handlePurchasePack}
               />
+            )}
+
+            {activeTab === 'nutflox' && (
+              <NutfloxParadigm />
             )}
           </div>
         </aside>
