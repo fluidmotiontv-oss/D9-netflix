@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ExternalLink, Play, Clock, Folder, Zap, Lock, Unlock } from 'lucide-react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import SmokeEffect from './SmokeEffect';
+import NutfloxPromoCampaign from './NutfloxPromoCampaign';
 
 const NEW_CONTENT = [
   { id: 'n1', title: 'The Void Cycle', duration: '45m', live: true },
@@ -17,7 +18,11 @@ const ARCHIVED_CYCLES = [
   { id: 'f4', title: 'Pre-Apex Civilisation', duration: '∞', price: 42.00, unlocked: false },
 ];
 
-export default function NutfloxParadigm() {
+interface NutfloxParadigmProps {
+  onGainXp?: (amount: number) => void;
+}
+
+export default function NutfloxParadigm({ onGainXp }: NutfloxParadigmProps = {}) {
   const [expandedFoldId, setExpandedFoldId] = useState<string | null>(null);
   const [archives, setArchives] = useState(ARCHIVED_CYCLES);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -224,6 +229,9 @@ export default function NutfloxParadigm() {
           })}
         </div>
       </div>
+
+      {/* 3 Video Promo Style Campaign Generator */}
+      <NutfloxPromoCampaign onGainXp={onGainXp} />
     </div>
   );
 }

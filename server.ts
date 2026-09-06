@@ -258,6 +258,188 @@ async function startServer() {
     }
   });
 
+  app.post('/api/generate-nutflox-promos', async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      let generatedAIs: any = null;
+
+      if (apiKey) {
+        try {
+          const ai = new GoogleGenAI({ apiKey });
+          const prompt = `You are the Executive Creative Director & Lead Prompt Engineer for "Nutflox" (Dragon 9's decentralized stoner-comedy streaming paradigm).
+Write 3 future-proofed, ultra-high-tech video promotional advertisement packages for the Nutflox Special campaign.
+Ad 1: 15-second High-BPM Glitch Teaser (TikTok/Reels/Shorts).
+Ad 2: 30-second Cinematic Broadcast TV Spot (YouTube/Connected TV).
+Ad 3: 60-second Viral Social Director's Cut (Beached As Dragon9 meets futuristic streaming revolution).
+
+Return ONLY valid JSON with this exact array structure under key "promos":
+{
+  "promos": [
+    {
+      "id": "promo-1",
+      "title": "Ad 1: The Holographic Temporal Glitch",
+      "hook": "...",
+      "duration": "15s High-BPM Cut",
+      "aspectRatio": "9:16 Vertical & 16:9 Master",
+      "targetChannels": ["TikTok Spark Ads", "Instagram Reels", "YouTube Shorts"],
+      "storyboard": "...",
+      "scriptVoiceover": "...",
+      "audioBpm": 145,
+      "audioSpec": "...",
+      "adHeadline": "...",
+      "adBody": "...",
+      "cta": "Decompress Stream Now",
+      "techSpecs": {
+        "resolution": "4K UHD (3840x2160 & 2160x3840)",
+        "codec": "Apple ProRes 422HQ & H.265 Master Multi-Track",
+        "colorGrading": "HDR10+ / Rec.2020 Wide Color Gamut (1000 nits)",
+        "audioMix": "Dolby Atmos 5.1 & Binaural Spatialization (48kHz/24-bit)",
+        "bitrate": "50 Mbps CBR Ultra-Low Jitter",
+        "fps": "60.00 fps Motion-Smoothed"
+      },
+      "kpiTarget": {
+        "hookRate": "46.8% at 3s",
+        "estimatedCTR": "5.4%",
+        "targetCAC": "$0.88"
+      }
+    }
+  ]
+}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: prompt,
+            config: { responseMimeType: 'application/json' }
+          });
+          generatedAIs = JSON.parse(response.text || '{}');
+        } catch (err) {
+          console.warn('Gemini promo generation error, falling back to built-in future-proofed masters:', err);
+        }
+      }
+
+      const sampleVideos = [
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
+      ];
+
+      const defaultPromos = [
+        {
+          id: 'promo-1',
+          title: 'Ad 1: The Holographic Temporal Glitch',
+          hook: 'Linear TV is a 24-hour scam. Synchronise or stay obsolete.',
+          duration: '15s High-BPM Cut',
+          aspectRatio: '9:16 Vertical & 16:9 Master',
+          targetChannels: ['TikTok Spark Ads', 'Instagram Reels', 'YouTube Shorts', 'Snapchat'],
+          videoUrl: sampleVideos[2],
+          storyboard: '0.0s: Glitching retro Nutflox VHS tape dissolves into 8K quantum hyper-render of Dragon 9. 0.3s: Neon holographic smoke burst pulses to a 145 BPM sub-bass kick. 0.9s: Dragon 9 taps a floating sovereign joint; time counter rewinds from 24h to 26.667h. 1.2s: Nutflox logo laser-ignites into the center with instantaneous unlock CTA.',
+          scriptVoiceover: '[Voiceover - Gritty Cyber-Kiwi]: "They locked you into monthly subscriptions for reruns. Dragon 9 broke the timeline. Decompress the Fold. Stream in 26.667-hour real-time."',
+          audioBpm: 145,
+          audioSpec: 'Deep 808 sub-bass, metallic glitch impacts, binaural spatial whoosh calibrated at 528Hz harmonic resonance.',
+          adHeadline: 'Stop Paying for 24-Hour Reruns. Stream Dragon 9 on Nutflox.',
+          adBody: 'Traditional streaming feeds you yesterday\'s content. Nutflox is decentralized stand-up comedy unfolding live across 26.667-hour cycles. Instant sovereign unlock with zero subscription traps.',
+          cta: 'Decompress Stream Now',
+          techSpecs: {
+            resolution: '4K UHD (3840x2160 & 2160x3840)',
+            codec: 'Apple ProRes 422HQ & H.265 Master Multi-Track',
+            colorGrading: 'HDR10+ / Rec.2020 Wide Color Gamut (1000 nits)',
+            audioMix: 'Dolby Atmos 5.1 & Binaural Spatialization (48kHz/24-bit)',
+            bitrate: '50 Mbps CBR Ultra-Low Jitter',
+            fps: '60.00 fps Motion-Smoothed'
+          },
+          kpiTarget: {
+            hookRate: '46.8% at 3s',
+            estimatedCTR: '5.4%',
+            targetCAC: '$0.88'
+          }
+        },
+        {
+          id: 'promo-2',
+          title: 'Ad 2: The Sovereign Streaming Revolution',
+          hook: 'What if Netflix had no servers, no ads, and only smoked pure truth?',
+          duration: '30s Broadcast / CTV Spot',
+          aspectRatio: '16:9 Cinematic Widescreen (2.39:1 Anamorphic safe)',
+          targetChannels: ['YouTube In-Stream', 'Connected TV (Roku/AppleTV)', 'Reddit Video Ads', 'Meta Feeds'],
+          videoUrl: sampleVideos[1],
+          storyboard: '0.0s - 0.7s: Wide drone sweep across neon metropolis Babylon skyline crumbling into digital dust. 0.8s - 1.8s: Cut to Dragon 9 center stage in glowing spotlight, exhaling majestic volumetric smoke rings that form the Nutflox infinite fold. 1.9s - 3.0s: Close-up on gold-embossed Sovereign Joint pack being unsealed. Instant transition to audience laughing in 120fps slow motion. Dynamic QR code pulses with PayPal Sovereign Gateway.',
+          scriptVoiceover: '[Voiceover - Calm, authoritative, dry]: "Linear time was invented by people who wanted you at work by nine. On Nutflox, time belongs to the performers. One uncompressed payment. Infinite sovereign replay. Welcome to the New."',
+          audioBpm: 120,
+          audioSpec: 'Cinematic hybrid orchestral strings, analog Moog synth arpeggio, clean center dialogue track with -14 LUFS broadcast normalization.',
+          adHeadline: 'The World\'s First 26.667-Hour Stand-Up Comedy Special.',
+          adBody: 'Watch Dragon 9 dismantle linear time, corporate hurry-sickness, and Babylon deception. No recurring credit card charges. Unlock once, own forever.',
+          cta: 'Watch The Nutflox Special',
+          techSpecs: {
+            resolution: '4K DCI (4096x2160) Anamorphic Master',
+            codec: 'ProRes 4444 XQ & AV1 Web-Ready 10-bit',
+            colorGrading: 'ACEScc Workflow, P3-D65 Display Target',
+            audioMix: 'Dolby Atmos 7.1.4 Bed + Object Audio / EBU R128 Compliant',
+            bitrate: '65 Mbps CBR Master',
+            fps: '24.00 fps Cinematic Base'
+          },
+          kpiTarget: {
+            hookRate: '38.5% at 5s',
+            estimatedCTR: '4.2%',
+            targetCAC: '$1.25'
+          }
+        },
+        {
+          id: 'promo-3',
+          title: 'Ad 3: Beached As Dragon9 (Viral Social Special)',
+          hook: 'Yeah nah bro, can\'t fathom paying monthly subscription fees.',
+          duration: '60s Viral Social Director\'s Cut',
+          aspectRatio: '1:1 Square & 9:16 Vertical Cut',
+          targetChannels: ['TikTok Viral Campaign', 'Instagram Stories/Reels', 'X Video', 'YouTube Shorts'],
+          videoUrl: sampleVideos[0],
+          storyboard: '0.0s - 0.5s: Sunny golden Tasman beach shore. A confused cartoon seagull swoops in: "Bro! You\'re beached! Where\'s your streaming subscription?!" 0.6s - 1.5s: Dragon 9 turns around with glowing sunglasses: "Yeah nah bro. I\'m a Dragon9. Can\'t fathom subscription traps." 1.6s - 3.5s: Fast-cut montage of high-energy stand-up punchlines, crowd hysteria, and fractal origami smoke bursts. 3.6s - 6.0s: Seagull tries to offer a chip. Dragon 9 vaporizes the chip into a sovereign streaming token.',
+          scriptVoiceover: '[Dragon 9 - Authentic Kiwi stoner dragon]: "Look bro, Babylon wants your direct debit every month for movies you watched in 2014. On Nutflox, you unfold the archives when you want. Sweet as. Have a chip? Yeah nah, stream Dragon 9 instead bro."',
+          audioBpm: 105,
+          audioSpec: 'Warm dub reggae bassline, procedural ocean surf wash, crisp vinyl crackle, punchy vocal master with punchline rimshots.',
+          adHeadline: 'Beached As Bro. The Nutflox Special is Live.',
+          adBody: 'Unfathomable value. Unfiltered comedy. Watch Dragon 9 live on Nutflox now. Simulated PayPal checkout & Sovereign Jewel Slot support enabled.',
+          cta: 'Stream Free Preview',
+          techSpecs: {
+            resolution: '4K UHD (3840x2160) Multi-Aspect Adaptive',
+            codec: 'H.265 / HEVC Main10 & WebM VP9 Low-Latency',
+            colorGrading: 'Rec.709 & HDR10 Simultaneous Dual-Deliverable',
+            audioMix: 'Stereo Spatialized & Mono-Compatible Master (-16 LUFS)',
+            bitrate: '35 Mbps Adaptive Variable Bitrate',
+            fps: '60.00 fps High Smoothness'
+          },
+          kpiTarget: {
+            hookRate: '52.1% at 3s',
+            estimatedCTR: '6.8%',
+            targetCAC: '$0.62'
+          }
+        }
+      ];
+
+      const promos = (generatedAIs?.promos && Array.isArray(generatedAIs.promos) && generatedAIs.promos.length === 3)
+        ? generatedAIs.promos.map((p: any, idx: number) => ({
+            ...p,
+            videoUrl: sampleVideos[idx % sampleVideos.length],
+            techSpecs: p.techSpecs || defaultPromos[idx].techSpecs,
+            kpiTarget: p.kpiTarget || defaultPromos[idx].kpiTarget
+          }))
+        : defaultPromos;
+
+      res.json({
+        success: true,
+        generatedAt: new Date().toISOString(),
+        campaignManifest: {
+          campaignName: 'Nutflox Special Global Launch - Cycle 26.667h',
+          targetAudience: 'Stoner Comedy, Web3 Creators, Tech Mavericks, Late-Night Standup Fans',
+          totalAds: 3,
+          currency: 'USD',
+          trackingPixel: 'D9-NUTFLOX-CAMPAIGN-V1'
+        },
+        promos
+      });
+    } catch (e: any) {
+      console.error('Promo generation error:', e);
+      res.status(500).json({ error: 'Failed to generate promotional videos', details: String(e) });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

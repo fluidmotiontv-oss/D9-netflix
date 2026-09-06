@@ -83,6 +83,36 @@ export interface StrainConnoisseurItem {
 
 export const CANNABIS_CONNOISSEUR_VAULT: StrainConnoisseurItem[] = [
   {
+    id: 'chrono-glaze',
+    name: 'Chrono-Glaze (28.2% THC)',
+    type: 'Cosmic Hybrid',
+    thc: '28.2%',
+    terpenes: [
+      { name: 'β-Myrcene', percentage: '2.6%', effect: 'Elongates perceptual seconds by 2.4x under dense lighting' },
+      { name: 'Terpinolene', percentage: '1.8%', effect: 'Razor-sharp pacing & effortless cadence' },
+      { name: 'Limonene', percentage: '0.9%', effect: 'Golden iris glow & disarming swagger' },
+    ],
+    flavorProfile: 'Glazed citrus, glazed sweet lavender, ozone, toasted cedar.',
+    comedyEnhancement: 'Establishes immediate authority through atmosphere. If you bend perception in the first 60 seconds, the room surrenders.',
+    burnRate: 'Smooth iridescent ash, resin ring glowing violet.',
+    pairingAct: 'act_01_threshold',
+  },
+  {
+    id: 'resonance-haze',
+    name: 'Resonance Haze (31.8% THC)',
+    type: 'Sativa Dominant',
+    thc: '31.8%',
+    terpenes: [
+      { name: 'α-Pinene', percentage: '2.4%', effect: 'Surgical joke pruning & rapid microwave time loops' },
+      { name: 'β-Caryophyllene', percentage: '1.6%', effect: 'Chromatic pitch-shifted roast punchlines' },
+      { name: 'Linalool', percentage: '1.3%', effect: 'Transcendent calm during 10-minute mental journeys' },
+    ],
+    flavorProfile: 'Crisp pine needle, sour juniper mist, liquid chrome vapor, crushed mint.',
+    comedyEnhancement: 'Pushes observational comedy into temporal absurdism. Syncs physical audio with perceptual delay.',
+    burnRate: 'Crisp, aromatic crackle, razor-thin cherry.',
+    pairingAct: 'act_02_deep_tuning',
+  },
+  {
     id: 'cosmic-og',
     name: 'Cosmic OG (Batch #420-Alpha)',
     type: 'Indica Dominant',
@@ -216,6 +246,142 @@ export const ACTS = [
     gag: 'The entire animated set gets swallowed by a massive, screen-filling cloud of thick violet smoke, collapsing into a glowing liquid chrome emblem with kanji (超煙・超時) against a dark void.',
     audio: 'Low-pass reverb tail, bubbling bong water SFX, vinyl crackle fade.',
     icon: Aperture,
+  },
+];
+
+export const SUPER_PUFF_INITIATION_SPECIAL = {
+  project: "Super Puff: The Initiation",
+  specialFormat: "18-Minute Apex Special",
+  temporalFramework: "Dragon 9 Protocol (54-Min Hours / 26.66-Hr Cycles)",
+  version: "1.0.0-APEX",
+  acts: [
+    {
+      id: "act_01_threshold",
+      time: "00:00 – 06:00",
+      title: "Act I: The Threshold",
+      comedyTheory: "The Jarring Realization & System Shock",
+      strainPairing: "Chrono-Glaze (28.2% THC)",
+      studyTakeaway: "Establish immediate authority through atmosphere. If you bend perception in the first 60 seconds, the audience surrenders to the pace.",
+      bit: "Super Puff materializes through analog CRT static, reaching into mid-air to twist an invisible dial that drops the venue's room tone into a heavy 432Hz sub-bass hum. 'Welcome to the baseline. Secure your seatbelts, we're skipping the warm-up.'",
+      gag: "The venue walls glitch and dissolve outward, revealing a boundless starry void while the mic stand floats in mid-air.",
+      audio: "Analog static tear, deep 808 sub-drop (432Hz resonance), transition into lo-fi vinyl groove.",
+      visuals: "CRT scanlines peeling back to 4K anime styling, neon aqua highlights, glassmorphism overlays.",
+      stageDirections: "(SFX: Harsh CRT static crackle tears across the speakers. Dark screen. A glowing neon aqua line appears horizontally, snapping open to reveal Super Puff standing on a dark, glass-like reflective stage. He wears an oversized street-wear hoodie with glowing liquid chrome trims.)",
+      performanceScript: `(Reaches out into thin air, grabbing an invisible knob and twisting it counter-clockwise. SFX: Massive 808 sub-bass drop at 432Hz shakes the floor, dissolving the room noise into a deep, warm hum.)
+
+"Yeah nah... check. One, two. Is this thing calibrated, or are we still operating on standard linear drift?
+
+(Looks around room, raising an eyebrow)
+
+Welcome to the baseline. Secure your seatbelts, family—we’re skipping the warm-up entirely. You ever notice how humans treat time like a conveyor belt at a supermarket? Just standing there watching your minutes slide past like a cold loaf of bread and a tin of baked beans. 'Oh, I've got a meeting at 2:00 PM.' Why? Who chose 2:00 PM? Who agreed that sixty minutes makes an hour? It’s arbitrary. It’s clunky. We’re out here running on 54-minute hours, 26.66-hour cycles. You feel that extra space? That’s where the magic lives.
+
+(Takes a smooth pull from a glowing glass rig. SFX: Crisp bubbling water. Exhales a light blue haze that turns into glowing geometric shapes in mid-air.)
+
+Chrono-Glaze sitting at twenty-eight point two percent. Clean frequency. If you feel like your feet aren't touching the carpet anymore... good. That means the system calibration is working."`,
+      icon: Clock,
+      _meta: {
+        supportedWithJoints: true,
+        exportId: "SP-ACT1-CG28"
+      }
+    },
+    {
+      id: "act_02_deep_tuning",
+      time: "06:00 – 12:00",
+      title: "Act II: The Deep Tuning",
+      comedyTheory: "Hyperbolic Escalation & The Cosmic Detour",
+      strainPairing: "Resonance Haze (31.8% THC)",
+      studyTakeaway: "Push observational comedy into temporal absurdism. Use reactive visual ripples to sync physical audio with perceptual delay.",
+      bit: "Super Puff breaks down the sheer absurdity of linear 60-minute time and everyday corporate schedules, demonstrating how a single thought can expand into an entire 10-minute mental journey while staring at a microwave counter.",
+      gag: "Background stage elements melt and morph into chromatic fluid, vibrating in sync with voice pitch shifts and spatial audio delays.",
+      audio: "Binaural spatial audio shifts, 16-step synth pulses, pitch-shifted reverb echoes.",
+      visuals: "Chromatic aberration ripples, liquid metal surfaces, responsive spectrum analyzer waves.",
+      stageDirections: "(Visuals: The background venue walls dissolve entirely into fluid chromatic metal. The stage floats over a dark grid. Audio shifts to spatial stereo, panning left and right.)",
+      performanceScript: `(Pacing the floating stage, gesturing with liquid chrome-trimmed sleeves)
+
+"Let’s talk about the microwave trap. You know the one. You put a slice of pizza in for forty-five seconds. You hit start.
+
+(Glares directly at the audience with wide eyes)
+
+Tell me why forty-five seconds inside a kitchen feels longer than a four-year university degree? You stand there staring at that spinning plate, and suddenly your brain launches a whole three-part documentary series. You start reflecting on your primary school choices. You evaluate your 2018 tax return. You draft three entire business plans in your head.
+
+(SFX: Audio pitches down into an ultra-low reverb tail as background visuals warp in chromatic ripples)
+
+And then you look back at the timer... and TWO SECONDS HAVE PASSED. Two! That’s not physics, bro. That’s temporal distortion. The microwave is a portal. We’re out here living in three dimensions while our thoughts are vibrating across nine. That’s why we built this space—to tune into the real frequency while everyone else is stressing over 9-to-5 schedules."`,
+      icon: AudioWaveform,
+      _meta: {
+        supportedWithJoints: true,
+        exportId: "SP-ACT2-RH31"
+      }
+    },
+    {
+      id: "act_03_jikan_gire",
+      time: "12:00 – 18:00",
+      title: "Act III: Jikan Gire (Outro)",
+      comedyTheory: "The Antidotal Mic Drop & Negative Space Exit",
+      strainPairing: "Temporal Void Grand Reserve (34.5% THC)",
+      studyTakeaway: "The greatest comedians leave the room wanting 5 more minutes. A massive cloud and a 5-word farewell is peak comedy elegance.",
+      bit: "Super Puff drops the liquid chrome mic, takes one last monstrous rip from the cosmic bong, smiles calmly at the cheering room. 'じゃあな、良い夢見ろよ (See ya, have sweet dreams). Super Puff is out. Times Up, Mother Fathers.' Snap back to reality.",
+      gag: "The entire animated set gets swallowed by a massive, screen-filling cloud of thick violet smoke, collapsing into a glowing liquid chrome emblem with kanji (超煙・超時) against a dark void.",
+      audio: "Low-pass reverb tail, bubbling bong water SFX, vinyl crackle fade out.",
+      visuals: "Volumetric violet smoke, liquid chrome physics collapse, glowing neon kanji dissipation.",
+      stageDirections: "(Visuals: The chromatic environment darkens. Volumetric violet light beams pierce through the void from above. The strain status board shifts to 'Temporal Void Grand Reserve - 34.5% THC'.)",
+      performanceScript: `(Smiles calmly, taking a long, monstrous final rip from the cosmic rig. Dense, thick violet smoke fills his chest. He holds it for three seconds while the room goes dead silent except for a low-pass vinyl crackle.)
+
+"Time flies when you’re bending the continuum. Look at the clock—18 minutes, right on the Apex mark. Zero wasted energy.
+
+(Drops the liquid chrome microphone. SFX: Heavy metallic impact sound echoing into infinite reverb as the mic turns into liquid mercury upon hitting the glass floor.)
+
+Exhale..."
+
+(Exhales a massive, screen-filling cloud of thick violet smoke that completely engulfs the camera and stage.)
+
+SUPER PUFF (V.O.):
+
+"じゃあな、良い夢見ろよ. (See ya, have sweet dreams.) Super Puff is out. Times Up, Mother Fathers."
+
+(SFX: Bubbling bong water fade, deep low-pass sub tail. The violet smoke cloud condenses into a single central glowing liquid chrome emblem with kanji: 超煙・超時 before snapping to black.)`,
+      icon: Aperture,
+      _meta: {
+        supportedWithJoints: true,
+        exportId: "SP-ACT3-TV34"
+      }
+    }
+  ]
+};
+
+export const VEO_KEYFRAME_PROMPTS = [
+  {
+    id: 'veo-act-1',
+    actTitle: 'Act I: The Threshold',
+    modelTarget: 'Veo 3.1 / Midjourney v6 / Runway Gen-3',
+    aspectRatio: '16:9',
+    timecode: '00:00 – 06:00',
+    prompt: 'Cinematic 4K 16:9 shot, 2D/3D hybrid anime style. A chill sci-fi host wearing an oversized streetwear hoodie with glowing liquid chrome trims stands on a pitch-black reflective glass floor. He twists an invisible dial in mid-air as a massive cyan 432Hz energy wave pulses outward. CRT scanline textures peeling away into hyper-clear volumetric neon lighting. Atmospheric camera push-in, 24fps film grain, ultra-detailed.',
+    resolution: '4K HDR',
+    fps: 24,
+    lightingPalette: 'Cyan 432Hz Energy / CRT Scanline Textures',
+  },
+  {
+    id: 'veo-act-2',
+    actTitle: 'Act II: The Deep Tuning',
+    modelTarget: 'Veo 3.1 / Midjourney v6 / Runway Gen-3',
+    aspectRatio: '16:9',
+    timecode: '06:00 – 12:00',
+    prompt: 'Surreal 3D anime cinematic sequence. The background stage walls melt into liquid metallic chrome and fluid gold ripples. Abstract geometric shapes vibrate and float in mid-air around a mic stand. Chromatic aberration lens effect, dynamic spatial lighting shifting between magenta and gold, high contrast reflections, ultra-fluid motion physics, 8k resolution.',
+    resolution: '8K Ultra-Fluid',
+    fps: 24,
+    lightingPalette: 'Magenta & Fluid Gold / Chromatic Aberration',
+  },
+  {
+    id: 'veo-act-3',
+    actTitle: 'Act III: Jikan Gire / Outro',
+    modelTarget: 'Veo 3.1 / Midjourney v6 / Runway Gen-3',
+    aspectRatio: '16:9',
+    timecode: '12:00 – 18:00',
+    prompt: 'Extreme wide cinematic climax. An animated character takes a monstrous pull from a glowing glass rig and exhales a dense, screen-filling cloud of thick volumetric violet smoke. The mic drops, turning into liquid mercury upon hitting the dark reflective floor. The entire stage dissolves into violet smoke, collapsing into a central glowing liquid chrome Kanji emblem (超煙・超時) against a pitch-black void. Volumetric depth of field, 24fps, epic macro animation.',
+    resolution: '4K Macro Climax',
+    fps: 24,
+    lightingPalette: 'Volumetric Violet Smoke / Liquid Chrome Kanji',
   },
 ];
 

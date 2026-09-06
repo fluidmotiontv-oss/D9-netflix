@@ -12,6 +12,42 @@ export interface LightingMood {
 }
 
 export const LIGHTING_MOODS: Record<string, LightingMood> = {
+  'act_01_threshold': {
+    id: 'act_01_threshold',
+    name: 'Analog CRT & 432Hz Baseline',
+    tone: 'System Shock & Sub-Bass Resonance',
+    description: 'Boundless starry void with neon aqua highlights, CRT scanlines peeling back, and heavy 432Hz sub-drop resonance.',
+    primary: '#06b6d4',
+    secondary: '#3b82f6',
+    ambient: 'rgba(6, 182, 212, 0.35)',
+    accent: '#67e8f9',
+    pulseSpeed: '4.32s',
+    pattern: 'resonance',
+  },
+  'act_02_deep_tuning': {
+    id: 'act_02_deep_tuning',
+    name: 'Chromatic Liquid Resonance',
+    tone: 'Hyperbolic Escalation & 16-Step Synth Pulse',
+    description: 'Liquid metal chrome ripples, chromatic aberration shifts, and responsive spectrum analyzer waves.',
+    primary: '#ec4899',
+    secondary: '#8b5cf6',
+    ambient: 'rgba(236, 72, 153, 0.35)',
+    accent: '#f472b6',
+    pulseSpeed: '2.4s',
+    pattern: 'cyber-strobe',
+  },
+  'act_03_jikan_gire': {
+    id: 'act_03_jikan_gire',
+    name: 'Volumetric Violet & Liquid Chrome',
+    tone: 'Antidotal Mic Drop & Negative Space Exit',
+    description: 'Massive screen-filling violet smoke clouds collapsing into glowing liquid chrome kanji (超煙・超時).',
+    primary: '#8b5cf6',
+    secondary: '#6366f1',
+    ambient: 'rgba(139, 92, 246, 0.40)',
+    accent: '#c084fc',
+    pulseSpeed: '5.4s',
+    pattern: 'aurora-fade',
+  },
   'act-1': {
     id: 'cosmic-amber',
     name: 'Cosmic Amber',

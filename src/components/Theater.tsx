@@ -10,8 +10,13 @@ import ComedyArchives from './ComedyArchives';
 import DrGreenThumbroGuide from './DrGreenThumbroGuide';
 import SovereignJointFactory from './SovereignJointFactory';
 import NutfloxParadigm from './NutfloxParadigm';
+import BeachedAsBroSection from './BeachedAsBroSection';
+import TideSynthAudioView from './TideSynthAudioView';
+import WordForWordScriptView from './WordForWordScriptView';
 import { 
   ACTS, 
+  SUPER_PUFF_INITIATION_SPECIAL,
+  VEO_KEYFRAME_PROMPTS,
   PROMPTS, 
   COMEDY_THEORY_MODULES, 
   CANNABIS_CONNOISSEUR_VAULT, 
@@ -46,14 +51,21 @@ import {
   Award,
   Layers,
   FileJson,
-  Package
+  Package,
+  AudioWaveform,
+  FileText,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export default function Theater() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [actsData, setActsData] = useState<any[]>(ACTS);
-  const [currentAct, setCurrentAct] = useState(ACTS[0]);
-  const [activeTab, setActiveTab] = useState<'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox'>('acts');
+  const [selectedSpecial, setSelectedSpecial] = useState<'initiation_18m' | 'classic_45m'>('initiation_18m');
+  const [actsData, setActsData] = useState<any[]>(SUPER_PUFF_INITIATION_SPECIAL.acts);
+  const [currentAct, setCurrentAct] = useState<any>(SUPER_PUFF_INITIATION_SPECIAL.acts[0]);
+  const [activeTab, setActiveTab] = useState<'acts' | 'script' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached'>('acts');
+  const [visualizerMode, setVisualizerMode] = useState<'tidesynth' | 'spectrum'>('tidesynth');
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [theatricalMode, setTheatricalMode] = useState<'stage' | 'workshop'>('stage');
   const [isDragonTime, setIsDragonTime] = useState(false);
   const [isBroadcast, setIsBroadcast] = useState(false);
@@ -117,11 +129,11 @@ export default function Theater() {
   };
 
   // Sync theatricalMode when activeTab changes
-  const handleTabChange = (tab: 'acts' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox') => {
+  const handleTabChange = (tab: 'acts' | 'script' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached') => {
     setActiveTab(tab);
-    if (tab === 'archives' || tab === 'nft' || tab === 'thumbro') {
+    if (tab === 'archives' || tab === 'nft' || tab === 'thumbro' || tab === 'nutflox' || tab === 'beached') {
       setTheatricalMode('workshop');
-    } else if (tab === 'acts') {
+    } else if (tab === 'acts' || tab === 'script') {
       setTheatricalMode('stage');
     }
   };
@@ -340,18 +352,55 @@ export default function Theater() {
 
   const handleExportAct = () => {
     const exportData = {
+      project: selectedSpecial === 'initiation_18m' ? "Super Puff: The Initiation" : "Dragon 9 Comedy Special",
+      version: selectedSpecial === 'initiation_18m' ? "1.0.0-APEX" : "1.0.0",
       ...currentAct,
       _meta: {
         exportedAt: new Date().toISOString(),
         supportedWithJoints: true,
-        message: "Thanks for supporting the temporal void with digital joints! Share this exported JSON act with your timeline."
+        exportId: currentAct._meta?.exportId || `SP-${currentAct.id}`,
+        message: "Thanks for supporting the temporal void with digital joints! Times Up, Mother Fathers."
       }
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dragon9-act-${currentAct.id || 'export'}.json`;
+    a.download = `${currentAct.id || 'super-puff-act'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSelectSpecial = (special: 'initiation_18m' | 'classic_45m') => {
+    setSelectedSpecial(special);
+    if (special === 'initiation_18m') {
+      setActsData(SUPER_PUFF_INITIATION_SPECIAL.acts);
+      setCurrentAct(SUPER_PUFF_INITIATION_SPECIAL.acts[0]);
+      const matched = CANNABIS_CONNOISSEUR_VAULT.find(s => s.pairingAct === SUPER_PUFF_INITIATION_SPECIAL.acts[0].id);
+      if (matched) setActiveStrain(matched);
+    } else {
+      setActsData(ACTS);
+      setCurrentAct(ACTS[0]);
+      const matched = CANNABIS_CONNOISSEUR_VAULT.find(s => s.pairingAct === ACTS[0].id);
+      if (matched) setActiveStrain(matched);
+    }
+  };
+
+  const handleExportSpecialSchema = () => {
+    const payload = selectedSpecial === 'initiation_18m' ? SUPER_PUFF_INITIATION_SPECIAL : {
+      project: "Super Puff: The 60-Minute Lie",
+      specialFormat: "45-Minute Master Set",
+      temporalFramework: "Dragon 9 Protocol (54-Min Hours / 26.66-Hr Cycles)",
+      version: "1.0.0-CLASSIC",
+      acts: ACTS
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Super-Puff-${selectedSpecial === 'initiation_18m' ? 'The-Initiation-18Min-Apex' : 'The-60Min-Lie'}-Manifest.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -414,6 +463,14 @@ export default function Theater() {
   };
 
   const handleActClick = (act: any) => {
+    // Auto-sync paired strain if available
+    const matched = CANNABIS_CONNOISSEUR_VAULT.find(s => 
+      s.pairingAct === act.id || 
+      (act.strainPairing && act.strainPairing.toLowerCase().includes(s.name.toLowerCase().split(' ')[0]))
+    );
+    if (matched) {
+      setActiveStrain(matched);
+    }
     if (currentAct.id !== act.id) {
       triggerModal(act);
     }
@@ -708,19 +765,64 @@ export default function Theater() {
           />
         </div>
         
-        {/* Dynamic Visualizer with Tone Gradient */}
-        <div 
-          className="h-24 lg:h-32 shrink-0 rounded-2xl border bg-white/5 backdrop-blur-sm p-4 relative overflow-hidden transition-all duration-700"
-          style={{
-            borderColor: `${currentMood.primary}33`,
-            boxShadow: `0 0 20px ${currentMood.primary}18`,
-          }}
-        >
-          <div className="absolute top-0 right-0 p-2 text-[8px] font-mono opacity-40 uppercase tracking-widest flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentMood.primary }} />
-            AUDIO_SPECTRUM_SYNC [{currentMood.id.toUpperCase()}]
+        {/* Dynamic Audio-Reactive Synthesizer & Visualizer View */}
+        <div className="shrink-0 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-white/60 uppercase tracking-wider">
+              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="font-bold text-white/80">AUDIO-REACTIVE SYNTHESIS</span>
+              <span className="text-white/30 hidden sm:inline">[{selectedSpecial === 'initiation_18m' ? '432Hz APEX SPEC' : 'MASTER SET'}]</span>
+            </div>
+            <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10 text-[9px] font-mono">
+              <button
+                onClick={() => setVisualizerMode('tidesynth')}
+                className={`px-2 py-0.5 rounded transition-all font-bold ${
+                  visualizerMode === 'tidesynth'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-white/40 hover:text-white'
+                }`}
+                title="TideSynth Web Audio API (432Hz Sub-Drop & Liquid Metal Waves)"
+              >
+                ⚡ TideSynth (432Hz)
+              </button>
+              <button
+                onClick={() => setVisualizerMode('spectrum')}
+                className={`px-2 py-0.5 rounded transition-all font-bold ${
+                  visualizerMode === 'spectrum'
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                    : 'text-white/40 hover:text-white'
+                }`}
+                title="Classic Audio Spectrum Bars"
+              >
+                📊 Spectrum
+              </button>
+            </div>
           </div>
-          <Visualizer isPlaying={isPlaying} currentMood={currentMood} />
+
+          {visualizerMode === 'tidesynth' ? (
+            <TideSynthAudioView 
+              currentAct={
+                currentAct.id === 'act_01_threshold' ? 0 : 
+                currentAct.id === 'act_02_deep_tuning' ? 1 : 
+                currentAct.id === 'act_03_jikan_gire' ? 2 : 
+                Math.max(0, actsData.findIndex(a => a.id === currentAct.id) % 3)
+              } 
+            />
+          ) : (
+            <div 
+              className="h-24 lg:h-32 shrink-0 rounded-2xl border bg-white/5 backdrop-blur-sm p-4 relative overflow-hidden transition-all duration-700"
+              style={{
+                borderColor: `${currentMood.primary}33`,
+                boxShadow: `0 0 20px ${currentMood.primary}18`,
+              }}
+            >
+              <div className="absolute top-0 right-0 p-2 text-[8px] font-mono opacity-40 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentMood.primary }} />
+                AUDIO_SPECTRUM_SYNC [{currentMood.id.toUpperCase()}]
+              </div>
+              <Visualizer isPlaying={isPlaying} currentMood={currentMood} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -770,6 +872,20 @@ export default function Theater() {
                onClick={() => handleTabChange('acts')}
              >
                Acts ({actsData.length})
+             </button>
+
+             <button 
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
+                 activeTab === 'script' ? 'text-cyan-300 font-bold border-cyan-400' : 'border-transparent text-white/50 hover:text-cyan-300'
+               }`}
+               style={{
+                 borderColor: activeTab === 'script' ? '#00f3ff' : 'transparent',
+                 color: activeTab === 'script' ? '#22d3ee' : undefined,
+               }}
+               onClick={() => handleTabChange('script')}
+             >
+               <FileText className="w-3 h-3 text-cyan-400" />
+               <span>Script (18-Min)</span>
              </button>
 
              <button 
@@ -848,72 +964,174 @@ export default function Theater() {
              >
                Nutflox
              </button>
+             <button
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap ${
+                 activeTab === 'beached' ? 'text-white font-bold' : 'border-transparent text-white/50 hover:text-white'
+               }`}
+               style={{
+                 borderColor: activeTab === 'beached' ? '#06b6d4' : 'transparent',
+                 color: activeTab === 'beached' ? '#22d3ee' : undefined,
+               }}
+               onClick={() => handleTabChange('beached')}
+             >
+               Beached As Bro
+             </button>
           </div>
 
           <div className="space-y-4 flex-1">
-            {activeTab === 'acts' && actsData.map((act, index) => {
-              const actMood = getLightingMoodForAct(act);
-              const isSelected = currentAct.id === act.id;
-
-              return (
-                <button
-                  key={act.id}
-                  onClick={() => handleActClick(act)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all duration-300 relative overflow-hidden group ${
-                    isSelected 
-                      ? 'bg-white/10 shadow-lg' 
-                      : 'bg-white/5 border-white/10 hover:border-white/30'
-                  }`}
-                  style={{
-                    borderColor: isSelected ? `${actMood.primary}88` : undefined,
-                    boxShadow: isSelected ? `0 0 20px ${actMood.primary}25` : undefined,
-                  }}
-                >
-                  {/* Subtle tone color left accent indicator */}
-                  <div 
-                    className={`absolute top-0 bottom-0 left-0 w-1 transition-all ${
-                      isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-60'
-                    }`}
-                    style={{ backgroundColor: actMood.primary }}
-                  />
-
-                  <div className="flex justify-between items-start mb-1 pl-1.5">
-                    <div 
-                      className={`text-[10px] font-mono uppercase font-bold flex items-center gap-1.5 ${
-                        isSelected ? '' : 'text-white/40'
-                      }`}
-                      style={{ color: isSelected ? actMood.accent : undefined }}
-                    >
-                      <span>ACT_0{index + 1}</span>
-                      <span className="text-[9px] opacity-60">[{actMood.name}]</span>
+            {activeTab === 'acts' && (
+              <div className="space-y-3">
+                {/* Special Timeline Selector Header */}
+                <div className="p-3 rounded-xl bg-gradient-to-r from-purple-950/40 via-black to-blue-950/30 border border-purple-500/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-white/90 font-bold">Special Format</span>
                     </div>
-                    <div className="text-[10px] font-mono text-white/30">{act.time}</div>
+                    <span className="text-[9px] font-mono text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                      Dragon 9 Protocol
+                    </span>
                   </div>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-white/90 truncate mb-1 pl-1.5">
-                    {act.title}
-                  </h3>
-                  <p className="text-xs text-white/50 line-clamp-2 pl-1.5 mb-2">
-                    {act.bit}
-                  </p>
 
-                  {/* Student of Comedy study notes & strain pairing preview */}
-                  {act.comedyTheoryTakeaway && (
-                    <div className="pl-1.5 pt-1.5 border-t border-white/5 flex flex-col gap-1 text-[9px] font-mono">
-                      <div className="text-amber-300 flex items-center gap-1">
-                        <BookOpen className="w-2.5 h-2.5 shrink-0" />
-                        <span className="truncate">Theory: {act.comedyTheoryTakeaway}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleSelectSpecial('initiation_18m')}
+                      className={`p-2 rounded-lg text-left border transition-all ${
+                        selectedSpecial === 'initiation_18m'
+                          ? 'bg-purple-900/30 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.25)]'
+                          : 'bg-white/5 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="text-[11px] font-bold text-white flex items-center gap-1">
+                        <span>⚡ 18-Min Apex Special</span>
                       </div>
-                      {act.terpenePairing && (
-                        <div className="text-emerald-400 flex items-center gap-1">
-                          <Cannabis className="w-2.5 h-2.5 shrink-0" />
-                          <span className="truncate">Pairing: {act.terpenePairing}</span>
+                      <div className="text-[9px] font-mono text-purple-300">The Initiation (v1.0.0-APEX)</div>
+                      <div className="text-[8px] font-mono text-white/40 mt-0.5">3 Acts • 6m each</div>
+                    </button>
+
+                    <button
+                      onClick={() => handleSelectSpecial('classic_45m')}
+                      className={`p-2 rounded-lg text-left border transition-all ${
+                        selectedSpecial === 'classic_45m'
+                          ? 'bg-red-900/30 border-red-400 shadow-[0_0_15px_rgba(239,68,68,0.25)]'
+                          : 'bg-white/5 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="text-[11px] font-bold text-white flex items-center gap-1">
+                        <span>🎙️ 45-Min Master Set</span>
+                      </div>
+                      <div className="text-[9px] font-mono text-red-300">The 60-Minute Lie</div>
+                      <div className="text-[8px] font-mono text-white/40 mt-0.5">4 Acts • Sumerian Knuckles</div>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-white/5">
+                    <span className="text-[9px] font-mono text-emerald-400">
+                      {selectedSpecial === 'initiation_18m' ? '● Active: Super Puff: The Initiation' : '● Active: The 60-Minute Lie'}
+                    </span>
+                    <button
+                      onClick={handleExportSpecialSchema}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-200 text-[9px] font-mono uppercase tracking-wider transition-all"
+                      title="Download complete JSON schema manifest"
+                    >
+                      <FileJson className="w-3 h-3" />
+                      <span>Export JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Acts Cards */}
+                {actsData.map((act, index) => {
+                  const actMood = getLightingMoodForAct(act);
+                  const isSelected = currentAct.id === act.id;
+
+                  return (
+                    <button
+                      key={act.id}
+                      onClick={() => handleActClick(act)}
+                      className={`w-full text-left p-4 rounded-xl border transition-all duration-300 relative overflow-hidden group ${
+                        isSelected 
+                          ? 'bg-white/10 shadow-lg' 
+                          : 'bg-white/5 border-white/10 hover:border-white/30'
+                      }`}
+                      style={{
+                        borderColor: isSelected ? `${actMood.primary}88` : undefined,
+                        boxShadow: isSelected ? `0 0 20px ${actMood.primary}25` : undefined,
+                      }}
+                    >
+                      {/* Subtle tone color left accent indicator */}
+                      <div 
+                        className={`absolute top-0 bottom-0 left-0 w-1 transition-all ${
+                          isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-60'
+                        }`}
+                        style={{ backgroundColor: actMood.primary }}
+                      />
+
+                      <div className="flex justify-between items-start mb-1 pl-1.5">
+                        <div 
+                          className={`text-[10px] font-mono uppercase font-bold flex items-center gap-1.5 ${
+                            isSelected ? '' : 'text-white/40'
+                          }`}
+                          style={{ color: isSelected ? actMood.accent : undefined }}
+                        >
+                          <span>ACT_0{index + 1}</span>
+                          <span className="text-[9px] opacity-60">[{actMood.name}]</span>
+                          {act._meta?.exportId && (
+                            <span className="text-[8px] px-1 py-0.2 rounded bg-white/10 text-white/60 font-mono">
+                              {act._meta.exportId}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+                        <div className="text-[10px] font-mono text-white/40">{act.time}</div>
+                      </div>
+                      <h3 className="text-sm font-bold uppercase tracking-wide text-white/90 truncate mb-1 pl-1.5">
+                        {act.title}
+                      </h3>
+                      <p className="text-xs text-white/60 line-clamp-2 pl-1.5 mb-2">
+                        {act.bit}
+                      </p>
+
+                      {/* Comedy Theory, Strain Pairing & Study Notes */}
+                      <div className="pl-1.5 pt-1.5 border-t border-white/5 space-y-1 text-[9px] font-mono">
+                        {(act.comedyTheory || act.comedyTheoryTakeaway) && (
+                          <div className="text-amber-300 flex items-center gap-1">
+                            <BookOpen className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">Theory: {act.comedyTheory || act.comedyTheoryTakeaway}</span>
+                          </div>
+                        )}
+                        {(act.strainPairing || act.terpenePairing) && (
+                          <div className="text-emerald-400 flex items-center gap-1">
+                            <Cannabis className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">Strain: {act.strainPairing || act.terpenePairing}</span>
+                          </div>
+                        )}
+                        {act.studyTakeaway && (
+                          <div className="text-purple-300/90 flex items-start gap-1">
+                            <Sparkles className="w-2.5 h-2.5 shrink-0 mt-0.5" />
+                            <span className="line-clamp-1 italic">"{act.studyTakeaway}"</span>
+                          </div>
+                        )}
+                        {act.audio && (
+                          <div className="text-cyan-300/80 flex items-center gap-1">
+                            <AudioWaveform className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">Audio: {act.audio}</span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === 'script' && (
+              <WordForWordScriptView
+                currentActId={currentAct.id}
+                onSelectAct={(act) => handleActClick(act)}
+                primaryColor={currentMood.primary}
+                accentColor={currentMood.accent}
+              />
+            )}
 
             {activeTab === 'archives' && (
               <ComedyArchives
@@ -1062,22 +1280,139 @@ export default function Theater() {
               </div>
             )}
 
-            {activeTab === 'prompts' && PROMPTS.map((prompt) => (
-              <div
-                key={prompt.id}
-                className="w-full text-left p-4 rounded-xl border bg-white/5 border-white/10 mb-4"
-              >
-                <h3 
-                  className="text-[10px] font-mono uppercase mb-2"
-                  style={{ color: currentMood.primary }}
-                >
-                  {prompt.title}
-                </h3>
-                <p className="text-xs text-white/70 whitespace-pre-wrap leading-relaxed font-mono">
-                  {prompt.prompt}
-                </p>
+            {activeTab === 'prompts' && (
+              <div className="space-y-4">
+                {/* VEO AI Batch Keyframe Prompts Header */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-black border border-purple-500/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                      <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                        VEO AI Batch Keyframe Prompts
+                      </h3>
+                    </div>
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      Veo 3.1 • Midjourney v6 • Runway Gen-3
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-white/60 font-light">
+                    Production-ready batch keyframe prompts for rendering 4K anime cinematic footage across the 3 acts.
+                  </p>
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                    <span className="text-[9px] font-mono text-purple-300">Format: 16:9 • 24fps • Ultra-Fluid</span>
+                    <button
+                      onClick={() => {
+                        const batchText = VEO_KEYFRAME_PROMPTS.map(p => `[${p.actTitle.toUpperCase()}]\nTarget: ${p.modelTarget}\nAspect: ${p.aspectRatio} | ${p.resolution} @ ${p.fps}fps\nPalette: ${p.lightingPalette}\n\nPROMPT:\n${p.prompt}\n`).join('\n==============================\n\n');
+                        const blob = new Blob([batchText], { type: 'text/plain;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'Super-Puff-Veo-Keyframe-Prompts-Batch.txt';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-200 text-[9px] font-mono uppercase tracking-wider transition-all"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Download Batch (.TXT)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* VEO Batch Keyframe Cards */}
+                <div className="space-y-3">
+                  {VEO_KEYFRAME_PROMPTS.map((p, idx) => {
+                    const isCopied = copiedPromptId === p.id;
+                    const accent = idx === 0 ? '#00f3ff' : idx === 1 ? '#ff00ea' : '#a855f7';
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-4 rounded-xl border bg-black/60 border-white/10 relative overflow-hidden space-y-2 hover:border-white/20 transition-all"
+                      >
+                        <div 
+                          className="absolute top-0 bottom-0 left-0 w-1"
+                          style={{ backgroundColor: accent }}
+                        />
+                        <div className="flex flex-wrap items-center justify-between gap-1 pl-1">
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded"
+                              style={{ color: accent, backgroundColor: `${accent}18` }}
+                            >
+                              Prompt {idx + 1}: {p.actTitle}
+                            </span>
+                            <span className="text-[9px] font-mono text-white/40">({p.timecode})</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.prompt);
+                              setCopiedPromptId(p.id);
+                              setTimeout(() => setCopiedPromptId(null), 2500);
+                            }}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-mono text-white/80 hover:text-white transition-all"
+                            title="Copy prompt to clipboard"
+                          >
+                            {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{isCopied ? 'Copied!' : 'Copy Prompt'}</span>
+                          </button>
+                        </div>
+
+                        <div className="pl-1 text-[9px] font-mono text-white/50 flex flex-wrap gap-2">
+                          <span>Aspect: <strong className="text-white/80">{p.aspectRatio}</strong></span>
+                          <span>•</span>
+                          <span>Output: <strong className="text-cyan-300">{p.resolution}</strong></span>
+                          <span>•</span>
+                          <span>Lighting: <strong className="text-purple-300">{p.lightingPalette}</strong></span>
+                        </div>
+
+                        <p className="pl-1 text-xs text-white/80 font-mono leading-relaxed bg-black/40 p-2.5 rounded-lg border border-white/5 select-text">
+                          {p.prompt}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Additional Studio Directives */}
+                <div className="pt-2 border-t border-white/10 space-y-3">
+                  <h4 className="text-[10px] font-mono uppercase tracking-wider text-white/50">
+                    Additional Studio & Audio TTS Directives
+                  </h4>
+                  {PROMPTS.map((prompt) => (
+                    <div
+                      key={prompt.id}
+                      className="w-full text-left p-3.5 rounded-xl border bg-white/5 border-white/10 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 
+                          className="text-[10px] font-mono uppercase font-bold"
+                          style={{ color: currentMood.primary }}
+                        >
+                          {prompt.title}
+                        </h3>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(prompt.prompt);
+                            setCopiedPromptId(prompt.id);
+                            setTimeout(() => setCopiedPromptId(null), 2500);
+                          }}
+                          className="flex items-center gap-1 text-[8px] font-mono text-white/40 hover:text-white"
+                        >
+                          {copiedPromptId === prompt.id ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                          <span>{copiedPromptId === prompt.id ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <p className="text-xs text-white/70 whitespace-pre-wrap leading-relaxed font-mono">
+                        {prompt.prompt}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
 
             {activeTab === 'heckler' && (
               <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md overflow-hidden">
@@ -1125,7 +1460,17 @@ export default function Theater() {
             )}
 
             {activeTab === 'nutflox' && (
-              <NutfloxParadigm />
+              <NutfloxParadigm
+                onGainXp={(amount) => setComedyXp(prev => prev + amount)}
+              />
+            )}
+
+            {activeTab === 'beached' && (
+              <BeachedAsBroSection
+                primaryColor={currentMood.primary}
+                accentColor={currentMood.accent}
+                onGainXp={(amount) => setComedyXp(prev => prev + amount)}
+              />
             )}
           </div>
         </aside>
