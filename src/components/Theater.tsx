@@ -5,7 +5,7 @@ import TimeSync from './TimeSync';
 import PurchaseModal from './PurchaseModal';
 import StonerDragonEffects from './StonerDragonEffects';
 import StageLighting from './StageLighting';
-import HecklerRack from './HecklerRack';
+import Heckler from './Heckler';
 import ComedyArchives from './ComedyArchives';
 import DrGreenThumbroGuide from './DrGreenThumbroGuide';
 import SovereignJointFactory from './SovereignJointFactory';
@@ -15,6 +15,20 @@ import TideSynthAudioView from './TideSynthAudioView';
 import WordForWordScriptView from './WordForWordScriptView';
 import VideoExportModal from './export/VideoExportModal';
 import LocalizationEngine from './LocalizationEngine';
+import CrowdReaction from './CrowdReaction';
+import { ActiveCrowdParticle } from './CrowdReactionOverlay';
+import { CrowdReactionItem } from '../audio/crowdAudio';
+import SessionLogModal from './SessionLogModal';
+import BrutalModeOverlay from './BrutalModeOverlay';
+import PoliticianMode from './PoliticianMode';
+import AmbientBackgroundPlayer from './AmbientBackgroundPlayer';
+import { 
+  loadSessionLog, 
+  saveSessionLog, 
+  createNewSession, 
+  PerformanceSessionData, 
+  SessionTimelineEvent 
+} from '../utils/sessionLog';
 import { 
   ACTS, 
   SUPER_PUFF_INITIATION_SPECIAL,
@@ -33,7 +47,10 @@ import {
   HeckleItem, 
   speakHeckle, 
   playHeckleSfx, 
-  playCrowdLaughterSfx 
+  playCrowdLaughterSfx,
+  playBrutalModeIntroSfx,
+  playStageMeltdownSfx,
+  playDragonDefibrillatorSfx
 } from '../audio/hecklerAudio';
 import { 
   Wand2, 
@@ -52,6 +69,7 @@ import {
   GraduationCap,
   Award,
   Layers,
+  Skull,
   FileJson,
   Package,
   AudioWaveform,
@@ -59,7 +77,11 @@ import {
   Copy,
   Check,
   Video,
-  Globe
+  Globe,
+  Users,
+  History,
+  RefreshCw,
+  Vote
 } from 'lucide-react';
 
 export default function Theater() {
@@ -67,13 +89,21 @@ export default function Theater() {
   const [selectedSpecial, setSelectedSpecial] = useState<'initiation_18m' | 'classic_45m'>('initiation_18m');
   const [actsData, setActsData] = useState<any[]>(SUPER_PUFF_INITIATION_SPECIAL.acts);
   const [currentAct, setCurrentAct] = useState<any>(SUPER_PUFF_INITIATION_SPECIAL.acts[0]);
-  const [activeTab, setActiveTab] = useState<'acts' | 'script' | 'localization' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached'>('acts');
+  const [activeTab, setActiveTab] = useState<'acts' | 'script' | 'localization' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'crowd_work' | 'crowd' | 'lighting' | 'politician' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached'>('acts');
   const [visualizerMode, setVisualizerMode] = useState<'tidesynth' | 'spectrum'>('tidesynth');
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [theatricalMode, setTheatricalMode] = useState<'stage' | 'workshop'>('stage');
   const [isDragonTime, setIsDragonTime] = useState(false);
   const [isBroadcast, setIsBroadcast] = useState(false);
   const [isBrutalTruthMode, setIsBrutalTruthMode] = useState(false);
+  const [isSuperPuffPeakMode, setIsSuperPuffPeakMode] = useState(false);
+  const [isPoliticianMode, setIsPoliticianMode] = useState(false);
+
+  // Live Crowd Reaction Particles State
+  const [crowdParticles, setCrowdParticles] = useState<ActiveCrowdParticle[]>([]);
+  const [activeCrowdReaction, setActiveCrowdReaction] = useState<CrowdReactionItem | null>(null);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const reactionTimeoutRef = useRef<any>(null);
 
   // Daily Auction State
   const [auctionState, setAuctionState] = useState(() => {
@@ -133,9 +163,9 @@ export default function Theater() {
   };
 
   // Sync theatricalMode when activeTab changes
-  const handleTabChange = (tab: 'acts' | 'script' | 'localization' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached') => {
+  const handleTabChange = (tab: 'acts' | 'script' | 'localization' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'crowd_work' | 'crowd' | 'lighting' | 'politician' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached') => {
     setActiveTab(tab);
-    if (tab === 'archives' || tab === 'nft' || tab === 'thumbro' || tab === 'nutflox' || tab === 'beached') {
+    if (tab === 'archives' || tab === 'nft' || tab === 'thumbro' || tab === 'nutflox' || tab === 'beached' || tab === 'politician') {
       setTheatricalMode('workshop');
     } else if (tab === 'acts' || tab === 'script' || tab === 'localization') {
       setTheatricalMode('stage');
@@ -193,8 +223,22 @@ export default function Theater() {
   const [composure, setComposure] = useState(100);
   const [totalHecklesHandled, setTotalHecklesHandled] = useState(0);
   const [isFrenzyMode, setIsFrenzyMode] = useState(false);
+  const [isBrutalMode, setIsBrutalMode] = useState(false);
+  const [brutalJoltActive, setBrutalJoltActive] = useState(false);
+  const brutalJoltTimerRef = useRef<any>(null);
+  const [isMeltdown, setIsMeltdown] = useState(false);
+  const [meltdownSecondsLeft, setMeltdownSecondsLeft] = useState(10);
   const [showFloatingHecklerModal, setShowFloatingHecklerModal] = useState(false);
   const heckleTimeoutRef = useRef<any>(null);
+
+  // Trigger aggressive impact jolt on activation and disruption strikes
+  const triggerBrutalJolt = useCallback((durationMs = 680) => {
+    if (brutalJoltTimerRef.current) clearTimeout(brutalJoltTimerRef.current);
+    setBrutalJoltActive(true);
+    brutalJoltTimerRef.current = setTimeout(() => {
+      setBrutalJoltActive(false);
+    }, durationMs);
+  }, []);
 
   // Compute active mood based on current act or manual override
   const currentMood = useMemo(() => {
@@ -230,11 +274,184 @@ export default function Theater() {
   // Modal states
   const [showModal, setShowModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showSessionLogModal, setShowSessionLogModal] = useState(false);
+  const [isPreviewExportMode, setIsPreviewExportMode] = useState(false);
   const [pendingAct, setPendingAct] = useState<any>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [lastModalTime, setLastModalTime] = useState(0);
   
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Performance Session Data & Event Timeline Logger
+  const [sessionData, setSessionData] = useState<PerformanceSessionData>(() => loadSessionLog());
+
+  useEffect(() => {
+    saveSessionLog(sessionData);
+  }, [sessionData]);
+
+  const logSessionEvent = useCallback((
+    type: 'heckle' | 'crowd_reaction' | 'roast' | 'act_change' | 'strain_change' | 'brutal_event' | 'meltdown',
+    label: string,
+    details?: string,
+    sentiment: 'positive' | 'negative' | 'neutral' = 'neutral',
+    metadata?: Record<string, any>
+  ) => {
+    const now = Date.now();
+    const d = new Date(now);
+    const timeFormatted = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+
+    const newEvent: SessionTimelineEvent = {
+      id: `evt-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: now,
+      timeFormatted,
+      type,
+      label,
+      details,
+      composure,
+      sentiment,
+      metadata,
+    };
+
+    setSessionData(prev => {
+      const stats = { ...prev.stats };
+      stats.totalEvents++;
+      if (type === 'heckle') stats.hecklesHandled++;
+      if (type === 'crowd_reaction') {
+        stats.crowdReactionsTriggered++;
+        const rId = metadata?.reactionId;
+        if (rId === 'laugh' || rId === 'chuckle') stats.laughterCount++;
+        else if (rId === 'applause' || rId === 'standing_ovation') stats.applauseCount++;
+        else if (rId === 'boo') stats.booCount++;
+        else if (rId === 'cheer' || rId === 'whistle') stats.cheerCount++;
+        else if (rId === 'gasp') stats.gaspCount++;
+      }
+
+      return {
+        ...prev,
+        lastUpdatedTime: now,
+        finalComposure: composure,
+        totalXp: comedyXp,
+        activeStrain: activeStrain.name,
+        currentRank: currentRank.title,
+        stats,
+        timeline: [...prev.timeline, newEvent],
+      };
+    });
+  }, [composure, comedyXp, activeStrain.name, currentRank.title]);
+
+  const handleTriggerCrowdReaction = useCallback((reaction: CrowdReactionItem) => {
+    setActiveCrowdReaction(reaction);
+    if (reactionTimeoutRef.current) clearTimeout(reactionTimeoutRef.current);
+    reactionTimeoutRef.current = setTimeout(() => {
+      setActiveCrowdReaction(null);
+    }, 2400);
+
+    // Spawn 4-7 animated floating stage particles
+    const particleCount = reaction.intensity === 'epic' ? 8 : reaction.intensity === 'high' ? 6 : 4;
+    const newParticles: ActiveCrowdParticle[] = Array.from({ length: particleCount }).map((_, i) => ({
+      id: `p-${Date.now()}-${i}-${Math.random()}`,
+      reaction,
+      x: 15 + Math.random() * 70, // 15% to 85% width
+      startY: 65 + Math.random() * 25, // 65% to 90% height
+      scale: 0.85 + Math.random() * 0.45,
+      rotation: Math.random() * 40 - 20,
+    }));
+
+    setCrowdParticles(prev => [...prev.slice(-12), ...newParticles]);
+
+    // Auto-remove particles after animation completes
+    setTimeout(() => {
+      setCrowdParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)));
+    }, 2500);
+
+    // Dynamic Crowd Reaction Log in Session Log
+    logSessionEvent(
+      'crowd_reaction',
+      `Crowd Reaction: ${reaction.label}`,
+      reaction.description || `The audience reacts with ${reaction.label.toLowerCase()}`,
+      (reaction.category === 'laughter' || reaction.category === 'applause' || reaction.category === 'cheer')
+        ? 'positive'
+        : reaction.category === 'boo'
+          ? 'negative'
+          : 'neutral',
+      {
+        reactionId: reaction.id,
+        intensity: reaction.intensity,
+        composureDelta: reaction.composureDelta,
+        progress: videoProgress,
+        actId: currentAct.id,
+      }
+    );
+  }, [logSessionEvent, videoProgress, currentAct.id]);
+
+  const handleClearSession = useCallback(() => {
+    const fresh = createNewSession(activeStrain.name, currentRank.title);
+    setSessionData(fresh);
+    saveSessionLog(fresh);
+  }, [activeStrain.name, currentRank.title]);
+
+  // Emergency Defibrillator Revive for Stage Meltdown
+  const handleEmergencyRevive = useCallback(() => {
+    setIsMeltdown(false);
+    playDragonDefibrillatorSfx();
+    setIsSmoking(true);
+    triggerChromaticEffect();
+    setComposure(100);
+    setComedyXp(prev => prev + 250);
+    setIsRoasting(true);
+    const comebackLine = "YOU CANNOT BREAK A FIFTH-DIMENSIONAL DRAGON! Quantum lungs re-calibrated. Times Up, Mother Fathers!";
+    setRoastDialogue(comebackLine);
+    speakHeckle(comebackLine, true);
+    setTimeout(() => {
+      playCrowdLaughterSfx();
+      setIsRoasting(false);
+      setRoastDialogue(null);
+    }, 4500);
+    logSessionEvent('roast', '🔥 Dragon Defibrillator Comeback', 'Performer hit emergency terpene defibrillator, resetting composure to 100% and incinerating the hecklers.', 'positive');
+  }, [triggerChromaticEffect, logSessionEvent]);
+
+  // Toggle Brutal Mode
+  const handleToggleBrutalMode = useCallback(() => {
+    setIsBrutalMode(prev => {
+      const next = !prev;
+      if (next) {
+        triggerBrutalJolt(750);
+        playBrutalModeIntroSfx();
+        logSessionEvent('brutal_event', '💀 Brutal Mode Engaged', 'Ruthless 3AM comedy cellar crucible activated. Extreme disruption intensity and Composure Meltdown at 0%.', 'negative');
+      } else {
+        setIsMeltdown(false);
+        logSessionEvent('brutal_event', 'Brutal Mode Standby', 'Standard performance tolerance restored.', 'neutral');
+      }
+      return next;
+    });
+  }, [logSessionEvent, triggerBrutalJolt]);
+
+  // Meltdown countdown effect
+  useEffect(() => {
+    if (!isMeltdown) return;
+
+    const timer = setInterval(() => {
+      setMeltdownSecondsLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setIsMeltdown(false);
+          setComposure(35);
+          setIsRoasting(true);
+          const recoverLine = "Whew... barely survived that timeline collapse! Drink some water, room. Times Up, Mother Fathers!";
+          setRoastDialogue(recoverLine);
+          speakHeckle(recoverLine, true);
+          setTimeout(() => {
+            setIsRoasting(false);
+            setRoastDialogue(null);
+          }, 4500);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isMeltdown]);
 
   // Trigger Heckler & Execute Performer Comedic Timing Reaction
   const handleTriggerHeckle = (heckle: HeckleItem) => {
@@ -245,18 +462,43 @@ export default function Theater() {
     setIsRoasting(false);
     setRoastDialogue(null);
 
+    // Log Heckle event to Session History
+    logSessionEvent('heckle', `${heckle.isBrutal ? '💀 BRUTAL: ' : ''}Heckle: ${heckle.label}`, heckle.phrase, 'negative', {
+      heckleId: heckle.id,
+      category: heckle.category,
+      xpAward: heckle.xpAward,
+      isBrutal: heckle.isBrutal,
+      personaId: heckle.persona,
+    });
+
     // Trigger super-puff-chromatic animation on main stage
     triggerChromaticEffect();
 
-    // Initial shock drops composure
-    setComposure(prev => Math.max(35, prev - Math.floor(Math.random() * 15 + 15)));
+    // Composure drop: heavier in Brutal Mode
+    if (isBrutalMode) {
+      triggerBrutalJolt(550);
+      const penalty = heckle.isBrutal ? Math.floor(Math.random() * 12 + 28) : Math.floor(Math.random() * 10 + 20);
+      setComposure(prev => {
+        const next = Math.max(0, prev - penalty);
+        if (next === 0 && !isMeltdown) {
+          setIsMeltdown(true);
+          setMeltdownSecondsLeft(10);
+          playStageMeltdownSfx();
+          logSessionEvent('meltdown', '🚨 STAGE MELTDOWN!', 'Dragon 9 composure flatlined at 0%! Emergency Dragon Bong required.', 'negative');
+        }
+        return next;
+      });
+    } else {
+      setComposure(prev => Math.max(35, prev - Math.floor(Math.random() * 15 + 15)));
+    }
 
     // Play SFX & Speak heckle phrase
     playHeckleSfx(heckle.id);
     speakHeckle(heckle.phrase, false);
 
-    // Award Comedy Student XP for facing disruptions
-    setComedyXp(prev => prev + (heckle.xpAward || 35));
+    // Award Comedy Student XP for facing disruptions (higher in brutal)
+    const awardedXp = isBrutalMode ? (heckle.xpAward ? heckle.xpAward * 2 : 75) : (heckle.xpAward || 35);
+    setComedyXp(prev => prev + awardedXp);
 
     // If laser pointer, start wandering coordinates
     if (heckle.id === 'laser') {
@@ -272,10 +514,18 @@ export default function Theater() {
       setRoastDialogue(heckle.performerRoast);
       speakHeckle(heckle.performerRoast, true);
 
-      // Composure recovery & crowd laughter burst
+      // Log Performer Retort to Session History
+      logSessionEvent('roast', 'Dragon 9 Retort', heckle.performerRoast, 'positive', {
+        heckleId: heckle.id,
+      });
+
+      // Composure recovery & crowd laughter burst (only if not in meltdown)
       setTimeout(() => {
         playCrowdLaughterSfx();
-        setComposure(prev => Math.min(100, prev + 25));
+        setComposure(prev => {
+          if (prev <= 0) return 0; // Must use defibrillator
+          return Math.min(100, prev + (isBrutalMode ? 35 : 25));
+        });
         setTotalHecklesHandled(prev => prev + 1);
       }, 1600);
     }, roastDelay);
@@ -308,7 +558,8 @@ export default function Theater() {
       icon: '🎙️',
       performerRoast: pickedRoast,
       reactionAnimation: 'eyebrow_raise',
-      xpAward: 50,
+      xpAward: isBrutalMode ? 100 : 50,
+      isBrutal: isBrutalMode,
       comedyTheoryTakeaway: 'Improv Reflex: Status inversion & immediate room grounding.',
       terpenePairingNote: 'Terpinolene spike: Instant pattern synthesis & crowd synchronization.'
     };
@@ -316,17 +567,51 @@ export default function Theater() {
     handleTriggerHeckle(customItem);
   };
 
-  // Frenzy Mode Loop: Automatically triggers unexpected heckles to test performer timing
+  // Frenzy / Brutal Mode Loop: Automatically triggers unexpected heckles using Gemini API to test performer timing
   useEffect(() => {
     let interval: any;
-    if (isFrenzyMode) {
-      interval = setInterval(() => {
-        const randomPreset = HECKLE_PRESETS[Math.floor(Math.random() * HECKLE_PRESETS.length)];
+    if (isFrenzyMode || isBrutalMode) {
+      const intervalDelay = isBrutalMode ? 5200 : 8500;
+      interval = setInterval(async () => {
+        // Pause automated attacks if stage is undergoing Composure Meltdown
+        if (isMeltdown) return;
+
+        try {
+          const resp = await fetch('/api/heckler/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              act: {
+                title: currentAct?.title,
+                bit: currentAct?.bit,
+                topic: currentAct?.comedyTheory || currentAct?.studyTakeaway,
+                strainPairing: currentAct?.strainPairing
+              },
+              performer: {
+                composure,
+                comedyXp,
+                rankTitle: currentRank?.title || 'Super Puff Performer',
+                activeStrain: activeStrain?.name
+              },
+              intensity: isBrutalMode ? 'brutal' : 'riot',
+              isBrutalMode: isBrutalMode
+            })
+          });
+          const data = await resp.json();
+          if (data?.heckle) {
+            handleTriggerHeckle(data.heckle);
+            return;
+          }
+        } catch (e) {
+          console.warn('[Frenzy/Brutal Mode] fallback to preset:', e);
+        }
+        const pool = isBrutalMode ? HECKLE_PRESETS.filter(p => p.isBrutal) : HECKLE_PRESETS;
+        const randomPreset = (pool.length > 0 ? pool : HECKLE_PRESETS)[Math.floor(Math.random() * (pool.length > 0 ? pool.length : HECKLE_PRESETS.length))];
         handleTriggerHeckle(randomPreset);
-      }, 8500);
+      }, intervalDelay);
     }
     return () => clearInterval(interval);
-  }, [isFrenzyMode]);
+  }, [isFrenzyMode, isBrutalMode, isMeltdown, currentAct, composure, comedyXp, currentRank, activeStrain]);
 
   // Wandering laser pointer jitter if laser is active
   useEffect(() => {
@@ -423,7 +708,11 @@ export default function Theater() {
       
       if (e.key === ' ') {
         e.preventDefault();
-        setIsPlaying(p => !p);
+        if (isMeltdown) {
+          handleEmergencyRevive();
+        } else {
+          setIsPlaying(p => !p);
+        }
       } else if (e.key.toLowerCase() === 's') {
         setIsDragonTime(p => !p);
       } else if (e.key.toLowerCase() === 'g') {
@@ -431,7 +720,13 @@ export default function Theater() {
       } else if (e.key.toLowerCase() === 'e') {
         handleExportAct();
       } else if (e.key.toLowerCase() === 'b') {
-        if (!isSmoking) setIsSmoking(true);
+        if (isMeltdown) {
+          handleEmergencyRevive();
+        } else if (!isSmoking) {
+          setIsSmoking(true);
+        }
+      } else if (e.key.toLowerCase() === 'x') {
+        handleToggleBrutalMode();
       } else if (e.key.toLowerCase() === 'a') {
         // Toggle Comedy Archives tab
         setActiveTab(prev => prev === 'archives' ? 'acts' : 'archives');
@@ -562,6 +857,7 @@ export default function Theater() {
           setIsAutoSync(false);
           setManualMood(m);
         }}
+        isTimingPeaked={isSuperPuffPeakMode}
       />
 
       {/* Ambient Background Grid */}
@@ -602,6 +898,15 @@ export default function Theater() {
           </button>
 
           <button
+            onClick={() => setActiveTab(prev => prev === 'crowd' ? 'acts' : 'crowd')}
+            className={`flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 border rounded-lg transition-all font-mono uppercase text-xs ${activeTab === 'crowd' ? 'border-amber-400 text-amber-300 bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'border-amber-500/40 text-amber-400/80 hover:bg-amber-500/10'}`}
+            title="Toggle Live Audience Reactions Soundboard (C)"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Audience Vibe</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab(prev => prev === 'heckler' ? 'acts' : 'heckler')}
             className={`flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 border rounded-lg transition-all font-mono uppercase text-xs ${activeTab === 'heckler' ? 'border-red-500 text-red-400 bg-red-500/15 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'border-red-500/40 text-red-400/80 hover:bg-red-500/10'}`}
             title="Toggle Heckler Lab & Timing Controls (H)"
@@ -611,6 +916,19 @@ export default function Theater() {
             {activeHeckle && (
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping ml-0.5" />
             )}
+          </button>
+
+          <button
+            onClick={handleToggleBrutalMode}
+            className={`flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 border rounded-lg transition-all font-mono uppercase text-xs ${
+              isBrutalMode
+                ? 'border-red-500 text-red-100 bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.7)] animate-pulse font-black'
+                : 'border-red-900/40 text-red-400/80 hover:bg-red-950/20'
+            }`}
+            title="Toggle Ruthless Brutal Mode Crucible (X)"
+          >
+            <Skull className={`w-3.5 h-3.5 ${isBrutalMode ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isBrutalMode ? '💀 BRUTAL ON' : 'Brutal Mode'}</span>
           </button>
 
           <div className="flex items-center space-x-2 hidden md:flex">
@@ -643,6 +961,19 @@ export default function Theater() {
             title="Shortcuts (?)"
           >
             <Keyboard className="w-3.5 h-3.5" />
+          </button>
+          
+          <button
+            onClick={() => setIsPreviewExportMode(prev => !prev)}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 border rounded-lg transition-all text-xs font-mono font-bold ${
+              isPreviewExportMode 
+                ? 'border-amber-400 text-amber-300 bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
+                : 'border-amber-500/40 text-amber-400/80 hover:bg-amber-500/10'
+            }`}
+            title="Toggle Real-Time Multi-Layer Preview Export Mode (P)"
+          >
+            <Layers className="w-3.5 h-3.5 text-amber-400" />
+            <span>Preview Export</span>
           </button>
           
           <button
@@ -753,9 +1084,11 @@ export default function Theater() {
           id="stage-video-container" 
           className={`flex-1 rounded-2xl overflow-hidden border bg-black/60 shadow-[0_0_35px_rgba(0,0,0,0.7)] relative transition-all duration-700 min-h-[250px] stage-rim-pulse ${
             isSmoking ? 'stoned-camera-active' : ''
-          } ${isChromaticActive ? 'super-puff-chromatic' : ''}`}
+          } ${isChromaticActive ? 'super-puff-chromatic' : ''} ${
+            isBrutalMode ? 'brutal-mode-active brutal-screen-shake' : ''
+          } ${brutalJoltActive ? 'brutal-initial-jolt' : ''}`}
           style={{
-            borderColor: `${currentMood.primary}44`,
+            borderColor: isBrutalMode ? 'rgba(239, 68, 68, 0.85)' : `${currentMood.primary}44`,
           }}
         >
           <VideoPlayer 
@@ -777,7 +1110,72 @@ export default function Theater() {
             comedyRankTitle={currentRank.title}
             activeStrainName={`${activeStrain.name} (${activeStrain.thc})`}
             mode={theatricalMode}
+            isPreviewExportMode={isPreviewExportMode}
+            setIsPreviewExportMode={setIsPreviewExportMode}
+            onCommitExport={handleExportAct}
+            crowdParticles={crowdParticles}
+            activeCrowdReaction={activeCrowdReaction}
+            onTriggerCrowdReaction={handleTriggerCrowdReaction}
+            onOpenCrowdRack={() => handleTabChange('crowd')}
+            isBrutalMode={isBrutalMode}
+            timeline={sessionData.timeline}
+            onProgressChange={setVideoProgress}
           />
+
+          {/* Brutal Mode Animation Overlay: Subtle Aggressive Screen Shake & Red-Tinted Flickering */}
+          <BrutalModeOverlay
+            isBrutalMode={isBrutalMode}
+            isJoltActive={brutalJoltActive}
+            isMeltdown={isMeltdown}
+            composure={composure}
+          />
+
+          {/* Brutal Arena Stage Banner */}
+          {isBrutalMode && (
+            <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-950/85 border border-red-500/80 text-red-200 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.5)] pointer-events-none">
+              <div className="flex items-center gap-2 text-[10px] font-mono font-bold tracking-wider uppercase">
+                <Skull className="w-3.5 h-3.5 text-red-400 animate-spin" />
+                <span>BRUTAL ARENA ACTIVE</span>
+                <span className="text-white/40 hidden sm:inline">• Ruthless AI Heckles • Meltdown at 0%</span>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono">
+                <span className="text-red-300 font-bold">Composure: {composure}%</span>
+                {composure <= 30 && (
+                  <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-black animate-pulse text-[8px]">
+                    CRITICAL
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Emergency Stage Meltdown Crisis Overlay */}
+          {isMeltdown && (
+            <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300 border-4 border-red-600 shadow-[inset_0_0_50px_rgba(239,68,68,0.8)]">
+              <div className="w-16 h-16 rounded-2xl bg-red-600/20 border-2 border-red-500 flex items-center justify-center mb-3 animate-bounce">
+                <Skull className="w-10 h-10 text-red-500" />
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-black text-red-500 uppercase tracking-tighter mb-1 animate-pulse">
+                STAGE MELTDOWN! CHOKE CRISIS!
+              </h2>
+              <p className="text-sm font-mono text-red-200/90 max-w-md mb-2">
+                Dragon 9's composure has flatlined at 0% under the ruthless 3AM cellar barrage! The timeline is destabilizing.
+              </p>
+              <div className="text-xs font-mono text-white/60 mb-5">
+                Quantum void collapse in: <span className="text-red-400 font-black text-base">{meltdownSecondsLeft}s</span>
+              </div>
+              <button
+                onClick={handleEmergencyRevive}
+                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-amber-600 to-red-600 text-white font-mono font-black text-sm uppercase tracking-wider shadow-[0_0_35px_rgba(239,68,68,0.8)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-white/20 animate-pulse"
+              >
+                <Flame className="w-5 h-5 text-amber-300" />
+                <span>HIT EMERGENCY DRAGON DEFIBRILLATOR (KEY: B)</span>
+              </button>
+              <span className="text-[10px] font-mono text-white/40 mt-3">
+                Restores 100% Composure + 250 XP + Vaporizes Stage Meltdown
+              </span>
+            </div>
+          )}
         </div>
         
         {/* Dynamic Audio-Reactive Synthesizer & Visualizer View */}
@@ -949,6 +1347,26 @@ export default function Theater() {
 
              <button 
                className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
+                 activeTab === 'crowd' ? 'text-amber-400 font-bold border-amber-400' : 'border-transparent text-white/50 hover:text-amber-400'
+               }`}
+               onClick={() => handleTabChange('crowd')}
+             >
+               <Users className="w-3 h-3 text-amber-400" />
+               <span>Audience Vibe</span>
+             </button>
+
+             <button 
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
+                 activeTab === 'crowd_work' ? 'text-blue-400 font-bold border-blue-500' : 'border-transparent text-white/50 hover:text-blue-400'
+               }`}
+               onClick={() => handleTabChange('crowd_work')}
+             >
+               <Users className="w-3 h-3 text-blue-500" />
+               <span>Crowd Work</span>
+             </button>
+
+             <button 
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
                  activeTab === 'heckler' ? 'text-red-400 font-bold border-red-500' : 'border-transparent text-white/50 hover:text-red-400'
                }`}
                onClick={() => handleTabChange('heckler')}
@@ -958,6 +1376,26 @@ export default function Theater() {
              </button>
 
              <button 
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
+                 activeTab === 'lighting' ? 'text-purple-400 font-bold border-purple-500' : 'border-transparent text-white/50 hover:text-purple-400'
+               }`}
+               onClick={() => handleTabChange('lighting')}
+             >
+               <Sparkles className="w-3 h-3 text-purple-400" />
+               <span>Lighting</span>
+              </button>
+
+              <button 
+                className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
+                  activeTab === 'politician' ? 'text-blue-400 font-bold border-blue-500' : 'border-transparent text-white/50 hover:text-blue-400'
+                }`}
+                onClick={() => handleTabChange('politician')}
+              >
+                <Vote className="w-3 h-3 text-blue-500" />
+                <span>Politician Mode</span>
+              </button>
+
+              <button 
                className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap ${
                  activeTab === 'prompts' ? 'text-white font-bold' : 'border-transparent text-white/50 hover:text-white'
                }`}
@@ -1458,9 +1896,100 @@ export default function Theater() {
               </div>
             )}
 
+            {activeTab === 'crowd' && (
+              <div className="space-y-4">
+                <AmbientBackgroundPlayer 
+                  isBrutalMode={isBrutalMode}
+                  primaryColor={currentMood.primary}
+                  accentColor={currentMood.accent}
+                />
+                <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md overflow-hidden p-2">
+                  <CrowdReaction 
+                    onTriggerReaction={(reaction) => {
+                      handleTriggerCrowdReaction(reaction);
+                      if (reaction.category === 'positive') {
+                        setComposure(prev => Math.min(100, prev + 10));
+                        setComedyXp(prev => prev + 15);
+                      } else if (reaction.category === 'negative') {
+                        setComposure(prev => Math.max(20, prev - 10));
+                      }
+                    }}
+                    activeReaction={activeCrowdReaction}
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'crowd_work' && (
+              <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-5 h-5 text-blue-400" />
+                  <h2 className="text-sm font-bold font-mono text-blue-300 uppercase">Crowd Work Bonus: The Old Clock</h2>
+                </div>
+                <p className="text-xs text-white/70 font-mono mb-4">
+                  Trigger Super Puff to brutally roast a heckler's confidence regarding the "old clock" concept.
+                </p>
+                
+                <div className="space-y-3">
+                  {[
+                    {
+                      id: 'clock_roast_1',
+                      title: 'The "Real World" Roast',
+                      phrase: "I've got work at 8am in the real world!",
+                      roast: "The 'real world'? Mate, your 'real world' is just a 60-minute Babylonian spreadsheet you print out to feel important. I operate in cosmic superposition. Your 8am alarm is a cry for help. Times Up, Mother Fathers!",
+                      icon: "⏰",
+                      persona: "the_heckler" as any
+                    },
+                    {
+                      id: 'clock_roast_2',
+                      title: 'The Existential Dread',
+                      phrase: "Why are your hours 54 minutes?!",
+                      roast: "Why are yours 60? Who told you that? A dead guy in a toga? You're letting a circle with numbers dictate your soul, champion. Break the clock, free your mind. Times Up, Mother Fathers!",
+                      icon: "🤯",
+                      persona: "the_critic" as any
+                    }
+                  ].map((roastItem) => (
+                    <button
+                      key={roastItem.id}
+                      onClick={() => {
+                        const customItem: HeckleItem = {
+                          id: roastItem.id,
+                          label: roastItem.title,
+                          category: 'audio',
+                          phrase: roastItem.phrase,
+                          description: 'Brutal old clock crowd work',
+                          icon: roastItem.icon,
+                          performerRoast: roastItem.roast,
+                          reactionAnimation: 'smoke_blast',
+                          xpAward: 150,
+                          isBrutal: true,
+                          comedyTheoryTakeaway: 'Chronological Deconstruction: Destroy the premise of time.',
+                          terpenePairingNote: 'High Pinene for temporal agility.',
+                          persona: roastItem.persona
+                        };
+                        handleTriggerHeckle(customItem);
+                      }}
+                      className="w-full text-left p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/50 transition-all flex flex-col gap-2 group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold font-mono text-blue-300 uppercase">{roastItem.title} {roastItem.icon}</span>
+                        <span className="text-[10px] font-mono text-amber-400 font-bold">+150 XP</span>
+                      </div>
+                      <div className="text-[10px] text-white/50 font-mono italic">
+                        Heckler: "{roastItem.phrase}"
+                      </div>
+                      <div className="text-[10px] text-white/80 font-mono border-l-2 border-blue-500/50 pl-2 mt-1">
+                        Puff: "{roastItem.roast}"
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'heckler' && (
               <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md overflow-hidden">
-                <HecklerRack 
+                <Heckler 
                   onTriggerHeckle={handleTriggerHeckle}
                   onTriggerCustomHeckle={handleTriggerCustomHeckle}
                   onClearDisruptions={() => {
@@ -1474,12 +2003,195 @@ export default function Theater() {
                   activeHeckle={activeHeckle}
                   isFrenzyMode={isFrenzyMode}
                   setIsFrenzyMode={setIsFrenzyMode}
+                  isBrutalMode={isBrutalMode}
+                  setIsBrutalMode={setIsBrutalMode}
                   primaryColor={currentMood.primary}
                   accentColor={currentMood.accent}
                   comedyXp={comedyXp}
                   activeStrain={activeStrain}
                   onSelectStrain={setActiveStrain}
                   onActivateChromatic={(active) => setIsChromaticActive(active)}
+                  currentAct={currentAct}
+                  isPlaying={isPlaying}
+                />
+              </div>
+            )}
+
+            {activeTab === 'lighting' && (
+              <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md p-4 space-y-4 text-left">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  <h2 className="text-sm font-bold font-mono text-purple-300 uppercase">Stage Lighting Controller</h2>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Super Puff Peaked Timing Visual Filter Feature Card */}
+                  <div className="p-3 rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-950/40 via-purple-900/30 to-amber-950/40 shadow-inner">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300 font-mono uppercase">
+                        <span className="text-base">✨</span>
+                        <span>'Super Puff' Visual Filter</span>
+                      </div>
+                      <span className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded-full font-bold border ${
+                        isSuperPuffPeakMode 
+                          ? 'bg-purple-500/30 text-purple-200 border-purple-400 animate-pulse' 
+                          : 'bg-white/10 text-white/50 border-white/10'
+                      }`}>
+                        {isSuperPuffPeakMode ? 'PEAKED (ACTIVE)' : 'READY'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/70 leading-relaxed font-light mb-2.5">
+                      Triggers when the Dragon's comedic timing reaches peak resonance, subtly distorting stage lights into a dreamier purple-orange palette.
+                    </p>
+                    <button
+                      onClick={() => setIsSuperPuffPeakMode(prev => !prev)}
+                      className={`w-full py-1.5 px-3 rounded-lg text-[10px] font-mono uppercase font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                        isSuperPuffPeakMode
+                          ? 'bg-purple-500 text-white border-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.6)]'
+                          : 'bg-white/10 hover:bg-white/15 text-purple-300 border-purple-500/30'
+                      }`}
+                    >
+                      <span>{isSuperPuffPeakMode ? '🟣 Super Puff Filter Engaged' : '⚡ Test Super Puff Peak Filter (P)'}</span>
+                    </button>
+                  </div>
+
+                  {/* Current Active Mood Card */}
+                  <div 
+                    className="p-3 rounded-xl border transition-all"
+                    style={{
+                      backgroundColor: `${currentMood.primary}12`,
+                      borderColor: `${currentMood.primary}44`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider mb-1">
+                      <span className="font-bold" style={{ color: currentMood.accent }}>
+                        {currentMood.name}
+                      </span>
+                      <span className="text-white/40">{currentMood.pattern}</span>
+                    </div>
+                    <div className="text-xs font-medium text-white/90 mb-1">
+                      {currentMood.tone}
+                    </div>
+                    <div className="text-[11px] text-white/60 leading-relaxed font-light">
+                      {currentMood.description}
+                    </div>
+                  </div>
+
+                  {/* Auto-Sync Toggle */}
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-mono text-white/90 uppercase font-semibold">
+                        Auto-Sync Tone with Acts
+                      </span>
+                      <span className="text-[10px] text-white/50">
+                        Switches stage lighting to match each joke's energy
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsAutoSync(!isAutoSync)}
+                      className={`w-10 h-5 rounded-full transition-colors relative flex items-center px-0.5 ${
+                        isAutoSync ? 'bg-green-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                          isAutoSync ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Continuous 360° Hue Cycle Mode */}
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-mono text-white/90 uppercase font-semibold flex items-center gap-1.5">
+                        <RefreshCw className={`w-3 h-3 ${isHueCycling ? 'animate-spin' : ''}`} />
+                        Prismatic Hue Cycle
+                      </span>
+                      <span className="text-[10px] text-white/50">
+                        Slow 360° spectrum wave across the entire theater
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsHueCycling(!isHueCycling)}
+                      className={`w-10 h-5 rounded-full transition-colors relative flex items-center px-0.5 ${
+                        isHueCycling ? 'bg-purple-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                          isHueCycling ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Brightness / Intensity Slider */}
+                  <div>
+                    <div className="flex justify-between items-center text-[10px] font-mono text-white/70 uppercase mb-1.5">
+                      <span>Stage Intensity</span>
+                      <span style={{ color: currentMood.accent }}>{Math.round(lightingIntensity * 100)}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {[0.4, 0.75, 1.0, 1.35].map(val => (
+                        <button
+                          key={val}
+                          onClick={() => setLightingIntensity(val)}
+                          className={`flex-1 py-1.5 text-[10px] font-mono uppercase rounded border transition-all ${
+                            lightingIntensity === val
+                              ? 'border-white bg-white/20 text-white font-bold'
+                              : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10'
+                          }`}
+                        >
+                          {val === 0.4 ? 'Dim' : val === 0.75 ? 'Mid' : val === 1.0 ? 'Norm' : 'Vivid'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Manual Atmosphere Palette Presets */}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-mono text-white/50 uppercase tracking-wider mb-2 mt-4">
+                      Tone Presets (Manual Override)
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.values(LIGHTING_MOODS).map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            setIsAutoSync(false);
+                            setManualMood(m);
+                          }}
+                          className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${
+                            currentMood.id === m.id
+                              ? 'border-white/80 bg-white/15 text-white font-bold'
+                              : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0 shadow-sm"
+                            style={{ backgroundColor: m.primary }}
+                          />
+                          <span className="text-[11px] truncate">{m.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'politician' && (
+              <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md p-4 space-y-4">
+                <PoliticianMode 
+                  composure={composure}
+                  comedyXp={comedyXp}
+                  setComedyXp={setComedyXp}
+                  activeStrain={activeStrain}
+                  isBrutalMode={isBrutalMode}
+                  onLogEvent={logSessionEvent}
+                  primaryColor={currentMood.primary}
+                  accentColor={currentMood.accent}
                 />
               </div>
             )}
@@ -1577,8 +2289,12 @@ export default function Theater() {
               <span>Export Video Studio (1m / 3m)</span>
             </li>
             <li className="flex justify-between items-center border-b border-white/5 pb-2">
+              <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[X]</span>
+              <span className="text-red-300 font-bold">Toggle Brutal Mode Crucible</span>
+            </li>
+            <li className="flex justify-between items-center border-b border-white/5 pb-2">
               <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[B]</span>
-              <span>Hit the Bong</span>
+              <span>Hit the Bong / Emergency Defibrillator</span>
             </li>
             <li className="flex justify-between items-center">
               <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[?]</span>

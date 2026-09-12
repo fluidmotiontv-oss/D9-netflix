@@ -167,4 +167,178 @@
   animation: superPuffBokehFloat 7.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* ================= BRUTAL MODE: AGGRESSIVE SCREEN SHAKE & RED FLICKER ================= */
+
+@keyframes brutalScreenShake {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  10% {
+    transform: translate3d(-1.8px, 1.2px, 0) rotate(-0.3deg);
+  }
+  20% {
+    transform: translate3d(1.6px, -1.4px, 0) rotate(0.25deg);
+  }
+  30% {
+    transform: translate3d(-1.2px, -1px, 0) rotate(0.15deg);
+  }
+  40% {
+    transform: translate3d(2px, 1.1px, 0) rotate(-0.25deg);
+  }
+  50% {
+    transform: translate3d(-1.6px, -1.5px, 0) rotate(0.2deg);
+  }
+  60% {
+    transform: translate3d(1.4px, 1.3px, 0) rotate(-0.2deg);
+  }
+  70% {
+    transform: translate3d(-1.5px, 0.8px, 0) rotate(0.25deg);
+  }
+  80% {
+    transform: translate3d(1.8px, -1.1px, 0) rotate(-0.2deg);
+  }
+  90% {
+    transform: translate3d(-0.8px, -1.2px, 0) rotate(0.15deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes brutalInitialJolt {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0) rotate(0deg);
+    filter: brightness(1) contrast(100%);
+  }
+  12% {
+    transform: scale(1.028) translate3d(-5px, 3px, 0) rotate(-0.7deg);
+    filter: brightness(1.45) contrast(125%) drop-shadow(0 0 30px rgba(239, 68, 68, 0.9));
+  }
+  28% {
+    transform: scale(1.018) translate3d(4px, -3px, 0) rotate(0.55deg);
+    filter: brightness(1.25) contrast(115%);
+  }
+  45% {
+    transform: scale(1.01) translate3d(-3px, -2px, 0) rotate(-0.35deg);
+    filter: brightness(1.1);
+  }
+  65% {
+    transform: scale(1.004) translate3d(2px, 1.5px, 0) rotate(0.2deg);
+  }
+  82% {
+    transform: scale(1.001) translate3d(-1px, 0.5px, 0) rotate(-0.1deg);
+  }
+  100% {
+    transform: scale(1) translate3d(0, 0, 0) rotate(0deg);
+    filter: brightness(1) contrast(100%);
+  }
+}
+
+@keyframes brutalRedFlicker {
+  0%, 100% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.5)) saturate(145%);
+  }
+  6% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 25px rgba(239, 68, 68, 0.8)) saturate(180%);
+  }
+  11% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.3)) saturate(120%);
+  }
+  18% {
+    opacity: 0.72;
+    filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.65)) saturate(160%);
+  }
+  24% {
+    opacity: 0.28;
+    filter: drop-shadow(0 0 5px rgba(185, 28, 28, 0.2)) saturate(110%);
+  }
+  29% {
+    opacity: 0.92;
+    filter: drop-shadow(0 0 35px rgba(255, 68, 68, 0.95)) saturate(200%);
+  }
+  38% {
+    opacity: 0.58;
+  }
+  47% {
+    opacity: 0.42;
+  }
+  53% {
+    opacity: 0.82;
+    filter: drop-shadow(0 0 28px rgba(239, 68, 68, 0.8)) saturate(175%);
+  }
+  61% {
+    opacity: 0.38;
+  }
+  69% {
+    opacity: 0.78;
+  }
+  75% {
+    opacity: 0.5;
+  }
+  83% {
+    opacity: 0.88;
+    filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.85)) saturate(190%);
+  }
+  89% {
+    opacity: 0.32;
+  }
+  94% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes brutalScanlineShift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100px;
+  }
+}
+
+@keyframes brutalBorderAlarm {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.5), inset 0 0 15px rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(239, 68, 68, 0.8), 0 0 70px rgba(185, 28, 28, 0.4), inset 0 0 30px rgba(239, 68, 68, 0.35);
+    border-color: rgba(248, 113, 113, 0.95);
+  }
+}
+
+.brutal-screen-shake {
+  animation: brutalScreenShake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+  will-change: transform;
+}
+
+.brutal-initial-jolt {
+  animation: brutalInitialJolt 0.68s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, filter;
+}
+
+.brutal-red-flicker {
+  animation: brutalRedFlicker 2.4s steps(24, start) infinite;
+  will-change: opacity, filter;
+}
+
+.brutal-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(220, 38, 38, 0.14) 0px,
+    rgba(220, 38, 38, 0.14) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  animation: brutalScanlineShift 12s linear infinite;
+}
+
+.brutal-mode-active {
+  animation: brutalBorderAlarm 1.8s ease-in-out infinite;
+  border-color: rgba(239, 68, 68, 0.85) !important;
+}
+
 

@@ -14,12 +14,26 @@ import {
   Activity, 
   ShieldAlert, 
   Sparkles,
-  Zap
+  Zap,
+  Layers,
+  Video,
+  Smile
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import CrowdVibeHeatmap from './CrowdVibeHeatmap';
 import AnimatedDragonPerformer from './AnimatedDragonPerformer';
+import PreviewExportOverlay from './export/PreviewExportOverlay';
+import CrowdReactionOverlay, { ActiveCrowdParticle } from './CrowdReactionOverlay';
+import CrowdReaction from './CrowdReaction';
 import { HeckleItem } from '../audio/hecklerAudio';
+import { CrowdReactionItem } from '../audio/crowdAudio';
+import { SessionTimelineEvent } from '../utils/sessionLog';
+import { 
+  StageEmotesOverlay, 
+  ActiveEmote, 
+  AUTOMATIC_EMOTE_BEATS, 
+  PRESET_EMOTES 
+} from './StageEmotesOverlay';
 
 interface VideoPlayerProps {
   isPlaying: boolean;
@@ -40,6 +54,16 @@ interface VideoPlayerProps {
   comedyRankTitle?: string;
   activeStrainName?: string;
   mode?: 'stage' | 'workshop';
+  isPreviewExportMode?: boolean;
+  setIsPreviewExportMode?: (val: boolean | ((prev: boolean) => boolean)) => void;
+  onCommitExport?: () => void;
+  crowdParticles?: ActiveCrowdParticle[];
+  activeCrowdReaction?: CrowdReactionItem | null;
+  onTriggerCrowdReaction?: (reaction: CrowdReactionItem) => void;
+  onOpenCrowdRack?: () => void;
+  isBrutalMode?: boolean;
+  timeline?: SessionTimelineEvent[];
+  onProgressChange?: (progress: number) => void;
 }
 
 export default function VideoPlayer({ 
@@ -61,16 +85,139 @@ export default function VideoPlayer({
   comedyRankTitle = 'Timing Alchemist',
   activeStrainName = 'Cosmic OG (31.4% THC)',
   mode = 'stage',
+  isPreviewExportMode: externalPreviewExport,
+  setIsPreviewExportMode: externalSetPreviewExport,
+  onCommitExport,
+  crowdParticles = [],
+  activeCrowdReaction = null,
+  onTriggerCrowdReaction,
+  onOpenCrowdRack,
+  isBrutalMode = false,
+  timeline = [],
+  onProgressChange,
 }: VideoPlayerProps) {
   const [progress, setProgress] = useState(0);
   const [muted, setMuted] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showCommentary, setShowCommentary] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showCrowdBar, setShowCrowdBar] = useState(true);
+  const [internalPreviewExport, setInternalPreviewExport] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isThrowingTomato, setIsThrowingTomato] = useState(false);
+  const [cameraAngle, setCameraAngle] = useState<'wide' | 'closeup' | 'crowd' | 'security'>('wide');
+  const [isCameraSwitching, setIsCameraSwitching] = useState(false);
+
+  // Floating Emote System States
+  const [activeEmotes, setActiveEmotes] = useState<ActiveEmote[]>([]);
+  const [showEmoteDeck, setShowEmoteDeck] = useState(false);
+  const [triggeredBeats, setTriggeredBeats] = useState<Record<string, boolean>>({});
+
+  const triggerEmote = (
+    type: ActiveEmote['type'], 
+    customPhrase?: string, 
+    customLabel?: string, 
+    customEmoji?: string, 
+    customX?: number, 
+    customY?: number
+  ) => {
+    const preset = PRESET_EMOTES.find(p => p.type === type);
+    if (!preset) return;
+
+    const emoji = customEmoji || preset.emoji;
+    const label = customLabel || preset.label;
+    const phrase = customPhrase || preset.phrase;
+    
+    // Position slightly randomized around middle-upper section of stage
+    const x = customX !== undefined ? customX : (35 + Math.random() * 30); // 35% to 65% width
+    const y = customY !== undefined ? customY : (20 + Math.random() * 15); // 20% to 35% height
+
+    const newEmote: ActiveEmote = {
+      id: `emote-${Date.now()}-${Math.random()}`,
+      type,
+      emoji,
+      label,
+      phrase,
+      x,
+      y
+    };
+
+    // Limit to max 3 concurrent emotes to prevent UI clutter
+    setActiveEmotes(prev => [...prev.slice(-2), newEmote]);
+
+    // Automatically remove after 5.5 seconds
+    setTimeout(() => {
+      setActiveEmotes(prev => prev.filter(e => e.id !== newEmote.id));
+    }, 5500);
+  };
+
+  // Keyboard shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      const key = e.key.toLowerCase();
+      if (key === 'e') {
+        setShowEmoteDeck(prev => !prev);
+      } else if (showEmoteDeck) {
+        const index = parseInt(e.key) - 1;
+        if (index >= 0 && index < PRESET_EMOTES.length) {
+          const preset = PRESET_EMOTES[index];
+          triggerEmote(preset.type);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showEmoteDeck]);
+
+  // Reset triggered beats when act changes
+  useEffect(() => {
+    setTriggeredBeats({});
+  }, [currentAct.id]);
+
+  // Reset triggered beats when progress goes back to start
+  useEffect(() => {
+    if (progress < 5) {
+      setTriggeredBeats({});
+    }
+  }, [progress]);
+
+  // Automatic timed emote cues monitoring effect
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const actId = currentAct.id || 'act-1';
+    const beatsForAct = AUTOMATIC_EMOTE_BEATS[actId] || AUTOMATIC_EMOTE_BEATS['act-1'];
+
+    beatsForAct.forEach((beat) => {
+      const beatKey = `${actId}-${beat.type}-${beat.minProgress}`;
+      if (progress >= beat.minProgress && progress <= beat.maxProgress) {
+        if (!triggeredBeats[beatKey]) {
+          setTriggeredBeats(prev => ({ ...prev, [beatKey]: true }));
+          triggerEmote(beat.type, beat.phrase, beat.label, beat.emoji, beat.x, beat.y);
+        }
+      }
+    });
+  }, [progress, isPlaying, currentAct.id, triggeredBeats]);
+
+  const handleCameraChange = (angle: 'wide' | 'closeup' | 'crowd' | 'security') => {
+    if (angle === cameraAngle) return;
+    setIsCameraSwitching(true);
+    setCameraAngle(angle);
+    setTimeout(() => {
+      setIsCameraSwitching(false);
+    }, 300);
+  };
+
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const isPreviewExport = externalPreviewExport !== undefined ? externalPreviewExport : internalPreviewExport;
+  const setPreviewExport = externalSetPreviewExport || setInternalPreviewExport;
 
   // Trigger tomato throw projectile animation when a tomato heckle occurs
   useEffect(() => {
@@ -134,6 +281,13 @@ export default function VideoPlayer({
     }
   }, [progress, isPlaying, currentAct, setIsPlaying, onActComplete]);
 
+  // Sync progress updates to parent
+  useEffect(() => {
+    if (onProgressChange) {
+      onProgressChange(progress);
+    }
+  }, [progress, onProgressChange]);
+
   const handleTimeUpdate = () => {
     if (videoRef.current && currentAct.videoUrl) {
       const p = (videoRef.current.currentTime / videoRef.current.duration) * 100;
@@ -187,6 +341,15 @@ export default function VideoPlayer({
         comedyRankTitle={comedyRankTitle}
         activeStrainName={activeStrainName}
         mode={mode}
+        cameraAngle={cameraAngle}
+        activeEmote={activeEmotes.length > 0 ? activeEmotes[activeEmotes.length - 1].type : null}
+        isBrutalMode={isBrutalMode}
+      />
+
+      {/* Floating Emotes Overlay */}
+      <StageEmotesOverlay 
+        activeEmotes={activeEmotes} 
+        onRemoveEmote={(id) => setActiveEmotes(prev => prev.filter(e => e.id !== id))}
       />
 
       {/* Throwing Tomato Flying Projectile Animation */}
@@ -225,7 +388,13 @@ export default function VideoPlayer({
                   setIsPlaying(false);
                   onActComplete();
                 }}
-                className="w-full h-full object-cover opacity-80 mix-blend-screen pointer-events-auto"
+                className={`w-full h-full object-cover opacity-80 mix-blend-screen pointer-events-auto transition-all duration-700 ${
+                  cameraAngle === 'closeup' 
+                    ? 'scale-[1.3]' 
+                    : cameraAngle === 'crowd' 
+                      ? 'scale-[0.85]' 
+                      : 'scale-100'
+                }`}
                 playsInline
               />
               {/* Stylized Cyberpunk Tint over the video */}
@@ -248,16 +417,111 @@ export default function VideoPlayer({
         </motion.div>
       </AnimatePresence>
 
+      {/* Floating High-Tech Camera Selector Deck */}
+      <div className="absolute top-4 right-4 z-40 flex items-center bg-black/75 backdrop-blur-md rounded-xl border border-white/10 p-1 pointer-events-auto transition-opacity duration-300 shadow-xl">
+        <div className="flex items-center gap-1">
+          <div className="px-2 py-1 text-[8px] font-mono text-white/40 uppercase tracking-widest border-r border-white/5 font-black flex items-center gap-1 shrink-0">
+            <Video className="w-3 h-3 text-orange-500 animate-pulse" />
+            <span className="hidden sm:inline">CAMS</span>
+          </div>
+          {(['wide', 'closeup', 'crowd', 'security'] as const).map((angle) => {
+            const isActive = cameraAngle === angle;
+            const label = 
+              angle === 'wide' 
+                ? 'CAM-1 WIDE' 
+                : angle === 'closeup' 
+                  ? 'CAM-2 TIGHT' 
+                  : angle === 'crowd' 
+                    ? 'CAM-3 REVERSE' 
+                    : 'CAM-4 CCTV';
+            const iconStr = 
+              angle === 'wide' 
+                ? '🎥' 
+                : angle === 'closeup' 
+                  ? '🔍' 
+                  : angle === 'crowd' 
+                    ? '👥' 
+                    : '📟';
+
+            return (
+              <button
+                key={angle}
+                onClick={() => handleCameraChange(angle)}
+                className={`px-2 py-1 rounded-lg text-[9px] font-mono font-bold transition-all flex items-center gap-1 ${
+                  isActive
+                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_12px_rgba(249,115,22,0.2)]'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                }`}
+                title={`Switch stage angle to ${label}`}
+              >
+                <span>{iconStr}</span>
+                <span className="hidden md:inline">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Analog Camera Switch Glitch Static Flicker Layer */}
+      <AnimatePresence>
+        {isCameraSwitching && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.95 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className="absolute inset-0 z-50 bg-slate-950 pointer-events-none flex flex-col items-center justify-center"
+          >
+            {/* Retro White/Gray Dynamic Noise Pattern */}
+            <div 
+              className="absolute inset-0 opacity-[0.25]"
+              style={{
+                background: 'radial-gradient(circle, transparent 20%, black 120%), repeating-linear-gradient(rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.15) 2px, transparent 2px, transparent 4px)',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+              }}
+            />
+            {/* Director's Cut Glitch Title */}
+            <div className="z-10 font-mono text-[10px] text-orange-500 font-bold tracking-[0.25em] bg-black/85 px-4 py-2 rounded-lg border border-orange-500/30 shadow-2xl uppercase animate-pulse flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
+              <span>CUT TO [CAM-{cameraAngle.toUpperCase()}]...</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Center Play Button Overlay */}
-      {!isPlaying && (
+      {!isPlaying && !isPreviewExport && (
         <button 
           onClick={togglePlay}
-          className="absolute z-20 w-16 sm:w-20 h-16 sm:h-20 bg-orange-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-orange-500/50 hover:bg-orange-500/40 hover:scale-110 transition-all shadow-[0_0_30px_rgba(249,115,22,0.3)]"
+          className={`absolute z-20 w-16 sm:w-20 h-16 sm:h-20 backdrop-blur-sm rounded-full flex items-center justify-center border hover:scale-110 transition-all ${
+            isBrutalMode 
+              ? 'bg-red-600/30 border-red-500/80 hover:bg-red-600/50 shadow-[0_0_35px_rgba(239,68,68,0.7)] animate-pulse'
+              : 'bg-orange-500/20 border-orange-500/50 hover:bg-orange-500/40 shadow-[0_0_30px_rgba(249,115,22,0.3)]'
+          }`}
           title="Play Set (Space)"
         >
-          <Play className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 ml-1" />
+          <Play className={`w-6 sm:w-8 h-6 sm:h-8 ml-1 ${isBrutalMode ? 'text-red-500' : 'text-orange-500'}`} />
         </button>
       )}
+
+      {/* Real-time Multi-Layer Preview Export Overlay */}
+      {isPreviewExport && (
+        <PreviewExportOverlay
+          act={currentAct}
+          currentTimeSec={(progress / 100) * 60}
+          isPlaying={isPlaying}
+          primaryColor={primaryColor}
+          accentColor={accentColor}
+          onCommitExport={onCommitExport}
+          onClose={() => setPreviewExport(false)}
+        />
+      )}
+
+      {/* Audio-Visual Crowd Reaction Particles Overlay */}
+      <CrowdReactionOverlay 
+        particles={crowdParticles} 
+        activeReaction={activeCrowdReaction} 
+      />
 
       {/* Director's Commentary Overlay */}
       {showCommentary && (
@@ -287,10 +551,50 @@ export default function VideoPlayer({
       {/* Custom Controls */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30 flex flex-col justify-end">
         
+        {/* Dragon 9 Stage Emote Quick-Trigger Deck */}
+        {showEmoteDeck && (
+          <div className="w-full mb-2 bg-black/90 backdrop-blur-md rounded-xl border border-orange-500/30 p-2 animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between px-1.5 mb-1.5 pointer-events-auto">
+              <span className="text-[9px] font-mono text-orange-400 font-black uppercase tracking-widest flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                Dragon 9 Emote Control Deck
+              </span>
+              <span className="text-[8px] font-mono text-white/40 uppercase">
+                Keys [1-6] Trigger Reactions • Key [E] Toggles
+              </span>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pointer-events-auto">
+              {PRESET_EMOTES.map((preset, idx) => (
+                <button
+                  key={preset.type}
+                  onClick={() => triggerEmote(preset.type)}
+                  className="flex flex-col items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-orange-500/15 border border-white/10 hover:border-orange-500/30 transition-all text-center pointer-events-auto group/em font-mono cursor-pointer"
+                  title={`Trigger ${preset.label}`}
+                >
+                  <span className="text-xl group-hover/em:scale-125 transition-transform duration-200">{preset.emoji}</span>
+                  <span className="text-[8px] font-bold text-white/80 mt-1 line-clamp-1 group-hover/em:text-orange-400">{preset.label}</span>
+                  <span className="text-[7px] text-white/30 mt-0.5 font-bold">[{idx + 1}]</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Crowd Quick Reaction Dock Bar */}
+        {showCrowdBar && (
+          <div className="w-full mb-2 animate-in fade-in slide-in-from-bottom-2">
+            <CrowdReaction 
+              isCompact={true} 
+              onTriggerReaction={onTriggerCrowdReaction} 
+              activeReaction={activeCrowdReaction}
+            />
+          </div>
+        )}
+
         {/* Crowd Vibe Heatmap */}
         {showHeatmap && (
           <div className="w-full px-2 mb-2 animate-in fade-in slide-in-from-bottom-2">
-            <CrowdVibeHeatmap progress={progress} actId={currentAct.id} />
+            <CrowdVibeHeatmap progress={progress} actId={currentAct.id} timeline={timeline} />
           </div>
         )}
 
@@ -317,6 +621,33 @@ export default function VideoPlayer({
           
           <div className="flex items-center space-x-4 text-white relative">
             <button 
+              onClick={() => setShowCrowdBar(!showCrowdBar)}
+              className={`transition-colors relative ${showCrowdBar ? 'text-amber-400' : 'hover:text-amber-400'}`}
+              title="Toggle Live Audience Reaction Soundboard Bar (C)"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+
+            <button 
+              onClick={() => setShowEmoteDeck(!showEmoteDeck)}
+              className={`transition-colors relative ${showEmoteDeck ? 'text-orange-500' : 'hover:text-orange-500'}`}
+              title="Toggle Dragon 9 Emote Control Deck (E)"
+            >
+              <Smile className="w-5 h-5 text-orange-400 scale-105" />
+              <span className="absolute -bottom-1 -right-1 text-[7px] font-mono font-black bg-orange-600 px-0.5 rounded text-white leading-none scale-75">E</span>
+            </button>
+
+            {onOpenCrowdRack && (
+              <button
+                onClick={onOpenCrowdRack}
+                className="hover:text-amber-300 text-amber-400/80 transition-colors relative"
+                title="Open Audience Atmosphere Lab"
+              >
+                <Sparkles className="w-5 h-5" />
+              </button>
+            )}
+
+            <button 
               onClick={() => setShowHeatmap(!showHeatmap)}
               className={`transition-colors relative ${showHeatmap ? 'text-green-500' : 'hover:text-green-500'}`}
               title="Crowd Vibe Heatmap"
@@ -336,6 +667,17 @@ export default function VideoPlayer({
                 )}
               </button>
             )}
+
+            <button 
+              onClick={() => setPreviewExport(prev => !prev)}
+              className={`transition-colors relative ${isPreviewExport ? 'text-amber-400' : 'hover:text-amber-400'}`}
+              title="Toggle Real-Time Multi-Layer Preview Export Mode (P)"
+            >
+              <Layers className="w-5 h-5" />
+              {isPreviewExport && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-ping" />
+              )}
+            </button>
 
             <button 
               onClick={() => setShowCommentary(!showCommentary)}

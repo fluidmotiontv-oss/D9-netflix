@@ -5,6 +5,12 @@
 
 import { ScriptCue } from './scriptTimedCues';
 
+export interface LayerVisibilityConfig {
+  background?: boolean;
+  actor?: boolean;
+  overlay?: boolean;
+}
+
 export interface CanvasRenderOptions {
   ctx: CanvasRenderingContext2D;
   width: number;
@@ -23,6 +29,13 @@ export interface CanvasRenderOptions {
   primaryColor?: string;
   accentColor?: string;
   isSpeaking?: boolean;
+  fps?: number;
+  videoFormat?: 'mp4' | 'webm';
+  layers?: LayerVisibilityConfig;
+  previewExportMode?: boolean;
+  showSafeZones?: boolean;
+  showCompositionGrid?: boolean;
+  showLayerTags?: boolean;
 }
 
 export function drawPerformerCanvasFrame({
@@ -43,104 +56,134 @@ export function drawPerformerCanvasFrame({
   primaryColor = '#22c55e',
   accentColor = '#a855f7',
   isSpeaking = true,
+  fps = 25,
+  videoFormat = 'mp4',
+  layers = { background: true, actor: true, overlay: true },
+  previewExportMode = false,
+  showSafeZones = true,
+  showCompositionGrid = true,
+  showLayerTags = true,
 }: CanvasRenderOptions) {
-  // Clear canvas
+  const showBg = layers.background !== false;
+  const showActor = layers.actor !== false;
+  const showOverlay = layers.overlay !== false;
+
+  // Clear canvas (default to dark slate transparency if bg hidden for alpha testing)
   ctx.clearRect(0, 0, width, height);
 
-  // 1. Stage Background Void & Radial Falloff
-  const bgGradient = ctx.createRadialGradient(
-    width / 2, height * 0.38, 50,
-    width / 2, height * 0.55, Math.max(width, height) * 0.85
-  );
-  bgGradient.addColorStop(0, '#1c1917');
-  bgGradient.addColorStop(0.45, '#0c0a09');
-  bgGradient.addColorStop(1, '#020202');
-  ctx.fillStyle = bgGradient;
-  ctx.fillRect(0, 0, width, height);
-
-  // 2. Stage Floor Grid & Glow (Perspective plane)
-  ctx.save();
-  const floorY = height * 0.70;
-  const floorGrad = ctx.createLinearGradient(0, floorY, 0, height);
-  floorGrad.addColorStop(0, 'rgba(168, 85, 247, 0.25)');
-  floorGrad.addColorStop(0.3, 'rgba(34, 197, 94, 0.12)');
-  floorGrad.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
-  ctx.fillStyle = floorGrad;
-  ctx.fillRect(0, floorY, width, height - floorY);
-
-  // Stage Floor Circular Spotlight Reflection
-  ctx.beginPath();
-  ctx.ellipse(width / 2, floorY + 40, width * 0.38, 35, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(34, 197, 94, 0.20)';
-  ctx.filter = 'blur(10px)';
-  ctx.fill();
-  ctx.filter = 'none';
-  ctx.restore();
-
-  // 3. Volumetric Overhead Spotlights (Conic & Linear Sweep)
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  const lightSway = Math.sin(timestamp * 0.0012) * 40;
-
-  // Left Cone (Amber / Violet)
-  const spotGrad1 = ctx.createLinearGradient(width * 0.3 + lightSway, 0, width * 0.5, floorY);
-  spotGrad1.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
-  spotGrad1.addColorStop(0.6, 'rgba(34, 197, 94, 0.15)');
-  spotGrad1.addColorStop(1, 'transparent');
-  ctx.fillStyle = spotGrad1;
-  ctx.beginPath();
-  ctx.moveTo(width * 0.25 + lightSway, 0);
-  ctx.lineTo(width * 0.38 + lightSway, 0);
-  ctx.lineTo(width * 0.75, floorY);
-  ctx.lineTo(width * 0.25, floorY);
-  ctx.closePath();
-  ctx.fill();
-
-  // Right Cone (Cyan / Amber)
-  const spotGrad2 = ctx.createLinearGradient(width * 0.7 - lightSway, 0, width * 0.5, floorY);
-  spotGrad2.addColorStop(0, 'rgba(6, 182, 212, 0.30)');
-  spotGrad2.addColorStop(0.6, 'rgba(245, 158, 11, 0.15)');
-  spotGrad2.addColorStop(1, 'transparent');
-  ctx.fillStyle = spotGrad2;
-  ctx.beginPath();
-  ctx.moveTo(width * 0.62 - lightSway, 0);
-  ctx.lineTo(width * 0.75 - lightSway, 0);
-  ctx.lineTo(width * 0.85, floorY);
-  ctx.lineTo(width * 0.35, floorY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // 4. Floating Atmospheric Terpene & Smoke Particles
-  ctx.save();
-  for (let i = 0; i < 22; i++) {
-    const pX = (width * 0.5 + Math.sin(timestamp * 0.0007 + i * 1.5) * (width * 0.42));
-    const pY = (floorY - ((timestamp * 0.035 + i * 35) % (height * 0.5)));
-    const pRadius = 18 + Math.sin(i * 3 + timestamp * 0.001) * 10;
-    const pAlpha = 0.06 + Math.sin(i * 2 + timestamp * 0.002) * 0.04;
-    ctx.fillStyle = `rgba(168, 85, 247, ${pAlpha})`;
-    ctx.beginPath();
-    ctx.arc(pX, pY, pRadius, 0, Math.PI * 2);
-    ctx.fill();
+  if (!showBg) {
+    // Checkerboard pattern for transparent/alpha preview
+    ctx.save();
+    const squareSize = 20;
+    for (let x = 0; x < width; x += squareSize) {
+      for (let y = 0; y < height; y += squareSize) {
+        ctx.fillStyle = ((x / squareSize + y / squareSize) % 2 === 0) ? '#111827' : '#0f172a';
+        ctx.fillRect(x, y, squareSize, squareSize);
+      }
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // =========================================================================
-  // 5. HIGH-FIDELITY 2.5D SUPER PUFF DRAGON PERFORMER (Complete Face & Top Layers)
+  // LAYER 1: STAGE BACKGROUND & VOLUMETRICS
   // =========================================================================
-  ctx.save();
-  
-  // Performer Origin Positioning & Dynamic Sway/Bounce
+  if (showBg) {
+    // 1. Stage Background Void & Radial Falloff
+    const bgGradient = ctx.createRadialGradient(
+      width / 2, height * 0.38, 50,
+      width / 2, height * 0.55, Math.max(width, height) * 0.85
+    );
+    bgGradient.addColorStop(0, '#1c1917');
+    bgGradient.addColorStop(0.45, '#0c0a09');
+    bgGradient.addColorStop(1, '#020202');
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. Stage Floor Grid & Glow (Perspective plane)
+    ctx.save();
+    const floorY = height * 0.70;
+    const floorGrad = ctx.createLinearGradient(0, floorY, 0, height);
+    floorGrad.addColorStop(0, 'rgba(168, 85, 247, 0.25)');
+    floorGrad.addColorStop(0.3, 'rgba(34, 197, 94, 0.12)');
+    floorGrad.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, floorY, width, height - floorY);
+
+    // Stage Floor Circular Spotlight Reflection
+    ctx.beginPath();
+    ctx.ellipse(width / 2, floorY + 40, width * 0.38, 35, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.20)';
+    ctx.filter = 'blur(10px)';
+    ctx.fill();
+    ctx.filter = 'none';
+    ctx.restore();
+
+    // 3. Volumetric Overhead Spotlights (Conic & Linear Sweep)
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const lightSway = Math.sin(timestamp * 0.0012) * 40;
+
+    // Left Cone (Amber / Violet)
+    const spotGrad1 = ctx.createLinearGradient(width * 0.3 + lightSway, 0, width * 0.5, floorY);
+    spotGrad1.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
+    spotGrad1.addColorStop(0.6, 'rgba(34, 197, 94, 0.15)');
+    spotGrad1.addColorStop(1, 'transparent');
+    ctx.fillStyle = spotGrad1;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.25 + lightSway, 0);
+    ctx.lineTo(width * 0.38 + lightSway, 0);
+    ctx.lineTo(width * 0.75, floorY);
+    ctx.lineTo(width * 0.25, floorY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right Cone (Cyan / Amber)
+    const spotGrad2 = ctx.createLinearGradient(width * 0.7 - lightSway, 0, width * 0.5, floorY);
+    spotGrad2.addColorStop(0, 'rgba(6, 182, 212, 0.30)');
+    spotGrad2.addColorStop(0.6, 'rgba(245, 158, 11, 0.15)');
+    spotGrad2.addColorStop(1, 'transparent');
+    ctx.fillStyle = spotGrad2;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.62 - lightSway, 0);
+    ctx.lineTo(width * 0.75 - lightSway, 0);
+    ctx.lineTo(width * 0.85, floorY);
+    ctx.lineTo(width * 0.35, floorY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // 4. Floating Atmospheric Terpene & Smoke Particles
+    ctx.save();
+    for (let i = 0; i < 22; i++) {
+      const pX = (width * 0.5 + Math.sin(timestamp * 0.0007 + i * 1.5) * (width * 0.42));
+      const pY = (floorY - ((timestamp * 0.035 + i * 35) % (height * 0.5)));
+      const pRadius = 18 + Math.sin(i * 3 + timestamp * 0.001) * 10;
+      const pAlpha = 0.06 + Math.sin(i * 2 + timestamp * 0.002) * 0.04;
+      ctx.fillStyle = `rgba(168, 85, 247, ${pAlpha})`;
+      ctx.beginPath();
+      ctx.arc(pX, pY, pRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // =========================================================================
+  // LAYER 2: HIGH-FIDELITY 2.5D SUPER PUFF DRAGON PERFORMER (Complete Face & Top Layers)
+  // =========================================================================
   const scaleFactor = aspectRatio === '9:16' ? (width / 420) : (height / 640);
   const centerX = width / 2;
   const centerY = aspectRatio === '9:16' ? height * 0.43 : height * 0.44;
   const bounceY = Math.sin(timestamp * 0.004) * 6;
   const swayX = Math.sin(timestamp * 0.002) * 4;
 
-  ctx.translate(centerX + swayX, centerY + bounceY);
-  ctx.scale(scaleFactor, scaleFactor);
+  if (showActor) {
+    ctx.save();
+    
+    // Performer Origin Positioning & Dynamic Sway/Bounce
+    ctx.translate(centerX + swayX, centerY + bounceY);
+    ctx.scale(scaleFactor, scaleFactor);
 
-  // A. Luminous Ambient Dragon Aura (Back Halo)
+    // A. Luminous Ambient Dragon Aura (Back Halo)
   const auraGrad = ctx.createRadialGradient(0, 0, 40, 0, 0, 150);
   auraGrad.addColorStop(0, 'rgba(74, 222, 128, 0.30)');
   auraGrad.addColorStop(0.5, 'rgba(34, 197, 94, 0.12)');
@@ -663,133 +706,291 @@ export function drawPerformerCanvasFrame({
   ctx.restore();
 
   ctx.restore(); // End Performer Container
+} // End if (showActor)
 
   // =========================================================================
-  // 6. TOP HUD BRANDING, TIMECODE & LOCALIZATION BADGES
+  // LAYER 3: TOP HUD BRANDING, TIMECODE & LOCALIZATION BADGES
   // =========================================================================
-  ctx.save();
-  const hudPadding = aspectRatio === '9:16' ? 24 : 36;
-
-  // Nutflox & Special Header
-  ctx.fillStyle = primaryColor;
-  ctx.font = 'bold 13px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText("NUTFLOX ORIGINAL SPECIAL", hudPadding, 38);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${aspectRatio === '9:16' ? '16px' : '18px'} monospace`;
-  ctx.fillText(`${clipTitle.toUpperCase()} [${targetLanguage}]`, hudPadding, 60);
-
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.font = '11px monospace';
-  ctx.fillText(`DRAGON 9 PROTOCOL • 54-MIN HARMONIC • ${strainPairing}`, hudPadding, 78);
-
-  // Timecode Countdown (Top Right)
-  const mins = Math.floor(currentTimeSec / 60);
-  const secs = Math.floor(currentTimeSec % 60);
-  const targetMins = Math.floor(targetDurationSec / 60);
-  const targetSecs = Math.floor(targetDurationSec % 60);
-  const timecodeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} / ${String(targetMins).padStart(2, '0')}:${String(targetSecs).padStart(2, '0')}`;
-
-  ctx.textAlign = 'right';
-  ctx.fillStyle = primaryColor;
-  ctx.font = `bold ${aspectRatio === '9:16' ? '16px' : '18px'} monospace`;
-  ctx.fillText(timecodeStr, width - hudPadding, 40);
-
-  // Preset Title Badge
-  ctx.fillStyle = 'rgba(6, 182, 212, 0.95)';
-  ctx.font = '11px monospace';
-  ctx.fillText(presetTitle.toUpperCase(), width - hudPadding, 60);
-
-  // Soundscape / Audio Indicator
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
-  ctx.font = '10px monospace';
-  ctx.fillText("432Hz HARMONIC RES • SUB-BASS SYNC", width - hudPadding, 78);
-
-  ctx.restore();
-
-  // =========================================================================
-  // 7. KINETIC SUBTITLES & TIMING DIRECTIVES BANNER
-  // =========================================================================
-  if (includeSubtitles && currentCue) {
+  if (showOverlay) {
     ctx.save();
-    const isPunchline = !!currentCue.isPunchline;
-    const subBoxWidth = aspectRatio === '9:16' ? width * 0.92 : width * 0.88;
-    const subBoxHeight = aspectRatio === '9:16' ? 120 : 100;
-    const subBoxX = (width - subBoxWidth) / 2;
-    const subBoxY = height - subBoxHeight - (aspectRatio === '9:16' ? 32 : 28);
+    const hudPadding = aspectRatio === '9:16' ? 24 : 36;
 
-    // Subtitle Card Backdrop
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
-    ctx.beginPath();
-    ctx.roundRect(subBoxX, subBoxY, subBoxWidth, subBoxHeight, 16);
-    ctx.fill();
+    // Nutflox & Special Header
+    ctx.fillStyle = primaryColor;
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText("NUTFLOX ORIGINAL SPECIAL", hudPadding, 38);
 
-    ctx.strokeStyle = isPunchline ? 'rgba(239, 68, 68, 0.9)' : 'rgba(34, 197, 94, 0.55)';
-    ctx.lineWidth = isPunchline ? 2.5 : 1.5;
-    ctx.stroke();
-
-    // Speaker Tag
-    ctx.fillStyle = isPunchline ? '#f87171' : '#4ade80';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'center';
-    const tagText = isPunchline ? "🔥 SUPER PUFF (CLIMAX PUNCHLINE)" : "🎙️ SUPER PUFF (THE BIGGER CLOCK)";
-    ctx.fillText(tagText, width / 2, subBoxY + 22);
-
-    // Spoken Text Word-Wrapping
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${aspectRatio === '9:16' ? '15px' : '16px'} sans-serif`;
-    ctx.textAlign = 'center';
+    ctx.font = `bold ${aspectRatio === '9:16' ? '16px' : '18px'} monospace`;
+    ctx.fillText(`${clipTitle.toUpperCase()} [${targetLanguage}]`, hudPadding, 60);
 
-    const words = currentCue.spokenText.split(' ');
-    let line = '';
-    let lineY = subBoxY + 48;
-    const maxWidth = subBoxWidth - 36;
-    const lineHeight = aspectRatio === '9:16' ? 24 : 22;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '11px monospace';
+    ctx.fillText(`DRAGON 9 PROTOCOL • 54-MIN HARMONIC • ${strainPairing}`, hudPadding, 78);
 
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + ' ';
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && n > 0) {
-        ctx.fillText(line, width / 2, lineY);
-        line = words[n] + ' ';
-        lineY += lineHeight;
-      } else {
-        line = testLine;
-      }
-    }
-    ctx.fillText(line, width / 2, lineY);
+    // Timecode Countdown (Top Right)
+    const mins = Math.floor(currentTimeSec / 60);
+    const secs = Math.floor(currentTimeSec % 60);
+    const targetMins = Math.floor(targetDurationSec / 60);
+    const targetSecs = Math.floor(targetDurationSec % 60);
+    const timecodeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} / ${String(targetMins).padStart(2, '0')}:${String(targetSecs).padStart(2, '0')}`;
 
-    // Pacing Directive Tag [pause: X.Xs]
-    if (includeTimingVisualizer && currentCue.pacingNote) {
-      ctx.fillStyle = 'rgba(253, 186, 116, 0.85)';
-      ctx.font = 'italic 11px monospace';
-      const maxPacingLen = aspectRatio === '9:16' ? 65 : 85;
-      const truncatedPacing = currentCue.pacingNote.length > maxPacingLen
-        ? currentCue.pacingNote.slice(0, maxPacingLen - 3) + '...'
-        : currentCue.pacingNote;
-      ctx.fillText(`[${truncatedPacing}]`, width / 2, subBoxY + subBoxHeight - 12);
-    }
+    ctx.textAlign = 'right';
+    ctx.fillStyle = primaryColor;
+    ctx.font = `bold ${aspectRatio === '9:16' ? '16px' : '18px'} monospace`;
+    ctx.fillText(timecodeStr, width - hudPadding, 40);
+
+    // Preset Title Badge
+    ctx.fillStyle = 'rgba(6, 182, 212, 0.95)';
+    ctx.font = '11px monospace';
+    ctx.fillText(presetTitle.toUpperCase(), width - hudPadding, 60);
+
+    // Soundscape / Audio & FPS Broadcast Indicator
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
+    ctx.font = '10px monospace';
+    ctx.fillText(`432Hz HARMONIC • ${fps} FPS ${videoFormat.toUpperCase()}`, width - hudPadding, 78);
 
     ctx.restore();
-  }
+
+    // =========================================================================
+    // 7. KINETIC SUBTITLES & TIMING DIRECTIVES BANNER
+    // =========================================================================
+    if (includeSubtitles && currentCue) {
+      ctx.save();
+      const isPunchline = !!currentCue.isPunchline;
+      const subBoxWidth = aspectRatio === '9:16' ? width * 0.92 : width * 0.88;
+      const subBoxHeight = aspectRatio === '9:16' ? 120 : 100;
+      const subBoxX = (width - subBoxWidth) / 2;
+      const subBoxY = height - subBoxHeight - (aspectRatio === '9:16' ? 32 : 28);
+
+      // Subtitle Card Backdrop
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+      ctx.beginPath();
+      ctx.roundRect(subBoxX, subBoxY, subBoxWidth, subBoxHeight, 16);
+      ctx.fill();
+
+      ctx.strokeStyle = isPunchline ? 'rgba(239, 68, 68, 0.9)' : 'rgba(34, 197, 94, 0.55)';
+      ctx.lineWidth = isPunchline ? 2.5 : 1.5;
+      ctx.stroke();
+
+      // Speaker Tag
+      ctx.fillStyle = isPunchline ? '#f87171' : '#4ade80';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      const tagText = isPunchline ? "🔥 SUPER PUFF (CLIMAX PUNCHLINE)" : "🎙️ SUPER PUFF (THE BIGGER CLOCK)";
+      ctx.fillText(tagText, width / 2, subBoxY + 22);
+
+      // Spoken Text Word-Wrapping
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${aspectRatio === '9:16' ? '15px' : '16px'} sans-serif`;
+      ctx.textAlign = 'center';
+
+      const words = currentCue.spokenText.split(' ');
+      let line = '';
+      let lineY = subBoxY + 48;
+      const maxWidth = subBoxWidth - 36;
+      const lineHeight = aspectRatio === '9:16' ? 24 : 22;
+
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line, width / 2, lineY);
+          line = words[n] + ' ';
+          lineY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, width / 2, lineY);
+
+      // Pacing Directive Tag [pause: X.Xs]
+      if (includeTimingVisualizer && currentCue.pacingNote) {
+        ctx.fillStyle = 'rgba(253, 186, 116, 0.85)';
+        ctx.font = 'italic 11px monospace';
+        const maxPacingLen = aspectRatio === '9:16' ? 65 : 85;
+        const truncatedPacing = currentCue.pacingNote.length > maxPacingLen
+          ? currentCue.pacingNote.slice(0, maxPacingLen - 3) + '...'
+          : currentCue.pacingNote;
+        ctx.fillText(`[${truncatedPacing}]`, width / 2, subBoxY + subBoxHeight - 12);
+      }
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 8. PUNCHLINE CHROMATIC FLARE & STANDING OVATION PULSE
+    // =========================================================================
+    if (currentCue?.isPunchline) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'color-dodge';
+      const flareAlpha = 0.20 + Math.sin(timestamp * 0.012) * 0.12;
+      ctx.fillStyle = `rgba(168, 85, 247, ${flareAlpha})`;
+      ctx.fillRect(0, 0, width, height);
+
+      // Golden Lens Flare Ring
+      ctx.beginPath();
+      ctx.arc(width / 2, centerY, width * 0.45, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(251, 191, 36, ${flareAlpha * 0.8})`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.restore();
+    }
+  } // End if (showOverlay)
 
   // =========================================================================
-  // 8. PUNCHLINE CHROMATIC FLARE & STANDING OVATION PULSE
+  // 9. PREVIEW EXPORT DIAGNOSTIC OVERLAY (Real-time Composition Verification)
   // =========================================================================
-  if (currentCue?.isPunchline) {
+  if (previewExportMode) {
     ctx.save();
-    ctx.globalCompositeOperation = 'color-dodge';
-    const flareAlpha = 0.20 + Math.sin(timestamp * 0.012) * 0.12;
-    ctx.fillStyle = `rgba(168, 85, 247, ${flareAlpha})`;
-    ctx.fillRect(0, 0, width, height);
 
-    // Golden Lens Flare Ring
+    // A. Rule of Thirds Grid & Center Crosshairs
+    if (showCompositionGrid) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+
+      // Vertical 1/3 and 2/3
+      ctx.beginPath();
+      ctx.moveTo(width / 3, 0); ctx.lineTo(width / 3, height);
+      ctx.moveTo((width * 2) / 3, 0); ctx.lineTo((width * 2) / 3, height);
+      // Horizontal 1/3 and 2/3
+      ctx.moveTo(0, height / 3); ctx.lineTo(width, height / 3);
+      ctx.moveTo(0, (height * 2) / 3); ctx.lineTo(width, (height * 2) / 3);
+      ctx.stroke();
+
+      // Golden Intersection Crosshair Marks (+)
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+      ctx.lineWidth = 1.5;
+      const drawCross = (cx: number, cy: number) => {
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+        ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+        ctx.stroke();
+      };
+      drawCross(width / 3, height / 3);
+      drawCross((width * 2) / 3, height / 3);
+      drawCross(width / 3, (height * 2) / 3);
+      drawCross((width * 2) / 3, (height * 2) / 3);
+
+      // Stage Center Axis Crosshair
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(width / 2 - 14, centerY); ctx.lineTo(width / 2 + 14, centerY);
+      ctx.moveTo(width / 2, centerY - 14); ctx.lineTo(width / 2, centerY + 14);
+      ctx.arc(width / 2, centerY, 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // B. Broadcast Action Safe (90%) & Title Safe (80%) Guides
+    if (showSafeZones) {
+      // 90% Action Safe Boundary (Cyan)
+      const actionMarginX = width * 0.05;
+      const actionMarginY = height * 0.05;
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.65)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([6, 3]);
+      ctx.strokeRect(actionMarginX, actionMarginY, width - actionMarginX * 2, height - actionMarginY * 2);
+
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.85)';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText("90% ACTION SAFE", actionMarginX + 6, actionMarginY + 12);
+
+      // 80% Title Safe Boundary (Magenta)
+      const titleMarginX = width * 0.10;
+      const titleMarginY = height * 0.10;
+      ctx.strokeStyle = 'rgba(236, 72, 153, 0.75)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(titleMarginX, titleMarginY, width - titleMarginX * 2, height - titleMarginY * 2);
+
+      ctx.fillStyle = 'rgba(236, 72, 153, 0.85)';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText("80% TITLE / SUBTITLE SAFE", titleMarginX + 6, titleMarginY + 12);
+      ctx.setLineDash([]);
+    }
+
+    // C. Layer Boundary Badges & Visual Callouts
+    if (showLayerTags) {
+      // Layer 1 Badge (Top-left bottom corner)
+      ctx.fillStyle = showBg ? 'rgba(168, 85, 247, 0.9)' : 'rgba(100, 116, 139, 0.5)';
+      ctx.fillRect(16, height - 200, 180, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`L1: BACKGROUND (${showBg ? 'ACTIVE' : 'MUTED'})`, 22, height - 186);
+
+      // Layer 2 Badge (Actor Zone)
+      const actorTagY = Math.max(120, centerY - (aspectRatio === '9:16' ? 180 : 150));
+      ctx.fillStyle = showActor ? 'rgba(34, 197, 94, 0.9)' : 'rgba(100, 116, 139, 0.5)';
+      ctx.fillRect(width / 2 - 95, actorTagY, 190, 20);
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`L2: 2.5D ACTOR MESH (${showActor ? 'ACTIVE' : 'MUTED'})`, width / 2, actorTagY + 14);
+
+      // Layer 2 Bounding Box outline
+      if (showActor) {
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        const boxW = aspectRatio === '9:16' ? width * 0.72 : width * 0.48;
+        const boxH = aspectRatio === '9:16' ? height * 0.45 : height * 0.56;
+        ctx.strokeRect((width - boxW) / 2, centerY - boxH * 0.5, boxW, boxH);
+        ctx.setLineDash([]);
+      }
+
+      // Layer 3 Badge (Overlay / Teleprompter)
+      ctx.fillStyle = showOverlay ? 'rgba(6, 182, 212, 0.9)' : 'rgba(100, 116, 139, 0.5)';
+      ctx.fillRect(16, height - 175, 180, 20);
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`L3: HUD & CAPTIONS (${showOverlay ? 'ACTIVE' : 'MUTED'})`, 22, height - 161);
+    }
+
+    // D. Real-Time Composition Diagnostics & Telemetry HUD Overlay
+    const hudW = aspectRatio === '9:16' ? 240 : 260;
+    const hudH = 110;
+    const hudX = width - hudW - (aspectRatio === '9:16' ? 16 : 24);
+    const hudY = height - hudH - (aspectRatio === '9:16' ? 160 : 135);
+
+    // Diagnostics Card
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
     ctx.beginPath();
-    ctx.arc(width / 2, centerY, width * 0.45, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(251, 191, 36, ${flareAlpha * 0.8})`;
-    ctx.lineWidth = 4;
+    ctx.roundRect(hudX, hudY, hudW, hudH, 10);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.7)';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
+
+    // Diagnostics Title Bar
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
+    ctx.beginPath();
+    ctx.roundRect(hudX, hudY, hudW, 24, [10, 10, 0, 0]);
+    ctx.fill();
+
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText("◉ PREVIEW EXPORT INSPECTOR", hudX + 10, hudY + 16);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '9px monospace';
+    ctx.fillText(`CANVAS: ${width}x${height} • ${fps} FPS ${videoFormat.toUpperCase()}`, hudX + 10, hudY + 42);
+    ctx.fillText(`LAYERS: L1:${showBg ? '✓' : '✗'} L2:${showActor ? '✓' : '✗'} L3:${showOverlay ? '✓' : '✗'} (ALL SYNCED)`, hudX + 10, hudY + 58);
+    ctx.fillText(`TIME: ${currentTimeSec.toFixed(2)}s / ${targetDurationSec}s • REC 709`, hudX + 10, hudY + 74);
+    
+    // Status Indicator
+    ctx.fillStyle = '#22c55e';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText("● COMPOSITION STATUS: VERIFIED", hudX + 10, hudY + 94);
+
     ctx.restore();
   }
 }

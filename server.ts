@@ -60,7 +60,14 @@ async function startServer() {
   const apiKey = process.env.GEMINI_API_KEY;
   let aiClient: GoogleGenAI | null = null;
   if (apiKey) {
-    aiClient = new GoogleGenAI({ apiKey });
+    aiClient = new GoogleGenAI({ 
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   } else {
     console.warn('[WARN] GEMINI_API_KEY is not configured. AI routes will run in degraded/simulated mode.');
   }
@@ -275,6 +282,284 @@ async function startServer() {
         status: 'ready'
       };
       res.json(fallbackData);
+    }
+  });
+
+  // Gemini-Powered Real-Time Heckler Engine Endpoint
+  app.post(['/api/heckler/generate', '/api/generate-heckle'], async (req: Request, res: Response) => {
+    const { act, performer, intensity, preferredCategory, isBrutalMode, persona } = req.body || {};
+    const actTitle = act?.title || 'Act I: The Threshold';
+    const actBit = act?.bit || 'Deconstructing linear 60-minute time and corporate routines';
+    const actTopic = act?.topic || act?.comedyTheory || 'Temporal Stand-up comedy';
+    const strain = performer?.activeStrain || act?.strainPairing || 'Chrono-Glaze';
+    const composure = typeof performer?.composure === 'number' ? performer.composure : 85;
+    const comedyXp = typeof performer?.comedyXp === 'number' ? performer.comedyXp : 480;
+    const rankTitle = performer?.rankTitle || 'Rookie Open Micer';
+    const chaos = intensity || 'standard';
+    const isBrutal = Boolean(isBrutalMode || intensity === 'brutal');
+    const targetPersona = persona || 'the_heckler';
+
+    // Resilient fallback generator in case of network limits, API quotas, or missing credentials
+    const getContextualFallback = () => {
+      const standardFallbacks = [
+        {
+          label: "Temporal Clock-Watcher",
+          phrase: `Mate, nobody cares about your 54-minute hours! I've got work at 8am in the real world!`,
+          category: "audio",
+          hecklerPersona: "Exhausted 9-to-5 Commuter in Row 3",
+          icon: "⏰",
+          performerRoast: `Aw bless ya legend, still letting a wall clock dictate your soul? You've got an 8am alarm, but Super Puff operates in cosmic superposition. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Status Inversion: Disarm audience anxiety by questioning the sanctity of their mundane routine.",
+          xpAward: 60,
+          reactionAnimation: "eyebrow_raise",
+          terpenePairingNote: `High Pinene for instantaneous mental agility when handling corporate clock-watchers.`
+        },
+        {
+          label: "Microwave Quantum Debate",
+          phrase: `Spinning cold food isn't quantum physics, dragon! You're just completely baked!`,
+          category: "audio",
+          hecklerPersona: "Pedantic Physics Student in Back Row",
+          icon: "🔬",
+          performerRoast: `If quantum superposition isn't real, explain why your Hot Pocket has molten lava cheese touching absolute zero beef, bro. Science proved it. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Empirical Reversal: Use visceral shared everyday experience to beat abstract pedantry.",
+          xpAward: 65,
+          reactionAnimation: "laser_track",
+          terpenePairingNote: `Myrcene baseline to keep vocal frequency deep and unshakable.`
+        },
+        {
+          label: "VC Valuation Challenge",
+          phrase: `Where's the smart contract, lizard? Show us the liquidity pool or step down!`,
+          category: "disruption",
+          hecklerPersona: "Anxious Web3 Day Trader with Red Chart",
+          icon: "📉",
+          performerRoast: `Mate, you traded your life savings for JPEG monkeys and you're lecturing an ancient dragon on liquidity? The only thing dropping faster than your portfolio is your composure. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "High-Status Deflection: Expose the heckler's vulnerable projection with effortless calm.",
+          xpAward: 70,
+          reactionAnimation: "smoke_blast",
+          terpenePairingNote: `Limonene uplift to maintain a playful, smiling aura while dismantling egos.`
+        },
+        {
+          label: "Heirloom Tomato Toss",
+          phrase: `*SPLAT!* An organic heirloom tomato flies straight toward the center stage mic!`,
+          category: "projectile",
+          hecklerPersona: "Rowdy Backseat Critic",
+          icon: "🍅",
+          performerRoast: `An heirloom tomato in this economy? Mate, that's $8.50 a pound. Super Puff bends time and weaves right through it. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Physical Deflection: Turn physical aggression into observational economic absurdity.",
+          xpAward: 75,
+          reactionAnimation: "dodge",
+          terpenePairingNote: `Terpinolene for rapid reflex evasion and laser counter-punch.`
+        },
+        {
+          label: "Terpene Skeptic",
+          phrase: `${strain} is weak! My cousin grows way louder fire in his shed!`,
+          category: "audio",
+          hecklerPersona: "Armchair Dispensary Critic",
+          icon: "🌿",
+          performerRoast: `Your cousin's shed weed smells like burnt lawn clippings and broken dreams, mate. We're smoking pure 26.66-hour cured stardust. Take a seat. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Territorial Superiority: Defend connoisseur credentials with vivid sensory contrast.",
+          xpAward: 60,
+          reactionAnimation: "smoke_blast",
+          terpenePairingNote: `Caryophyllene for peppery, assertive comeback punch.`
+        },
+        {
+          label: "Napkin Airplane Flight",
+          phrase: `*WHOOSH!* A folded napkin airplane glides right across the spotlight beam!`,
+          category: "projectile",
+          hecklerPersona: "Bored Origami Prankster in Row 1",
+          icon: "✈️",
+          performerRoast: `Look at this aerodynamics! Did you fold this during my setup? I respect the origami dedication, but your trajectory is as off as your life choices. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Playful Incorporation: Never ignore physical reality on stage; absorb it as part of the act.",
+          xpAward: 65,
+          reactionAnimation: "eyebrow_raise",
+          terpenePairingNote: `High-Pinene focus for instantaneous object interaction.`
+        },
+        {
+          label: "Awkward Silence Table",
+          phrase: `*Crickets chirping awkwardly from the dark VIP corner booth...*`,
+          category: "crowd",
+          hecklerPersona: "Dead Silence Table",
+          icon: "🦗",
+          performerRoast: `Yeah nah, don't all laugh at once. That joke wasn't for this timeline anyway—your great-grandkids are gonna find it hilarious. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "The Pregnant Pause Retort: Acknowledge silence immediately to win back crowd trust.",
+          xpAward: 55,
+          reactionAnimation: "deadpan",
+          terpenePairingNote: `Smooth inhalation to reset room timing and tempo.`
+        }
+      ];
+
+      const brutalFallbacks = [
+        {
+          label: "Savage Heckler Mob",
+          phrase: `GET OFF THE STAGE! Your timing is completely broken and this whole weed routine is washed!`,
+          category: "audio",
+          hecklerPersona: "Ruthless 3AM Comedy Cellar Assassin",
+          icon: "💀",
+          performerRoast: `Washed? Mate, I've headlined comedy venues that haven't even been built yet in your calendar. You bought a ticket to the front row just to display your generational insecurities? Sit down, hydrate, and take notes. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Scorched-Earth Grounding: Eviscerate hostile aggression with absolute metaphysical dominance.",
+          xpAward: 180,
+          reactionAnimation: "smoke_blast",
+          terpenePairingNote: `Maximum Caryophyllene punch to weaponize calm against unhinged hostility.`
+        },
+        {
+          label: "Double Pint Glass Barrage",
+          phrase: `*CRASH!* A glass pint hurled from the VIP balcony shatters across the stage footlights!`,
+          category: "projectile",
+          hecklerPersona: "Drunk VIP Table Heckler Swarm",
+          icon: "💥",
+          performerRoast: `Throwing glassware at an interdimensional dragon? Mate, in the 5th dimension, that glass just reconstituted itself and billed your credit card for a $450 venue deposit. Keep tossing, you're financing my world tour. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "High-Status Absorption: Neutralize violent projectiles by declaring total fiscal & physical superiority.",
+          xpAward: 200,
+          reactionAnimation: "dodge",
+          terpenePairingNote: `High Myrcene + Terpinolene reflex lock for zero-flinch evasion.`
+        },
+        {
+          label: "Deafening Chorus of Boos",
+          phrase: `BOOOOOOO! WE WANT A REFUND! YOUR BITS MAKE NO SENSE!`,
+          category: "crowd",
+          hecklerPersona: "Hostile Pitch Review Board in Chorus",
+          icon: "📢",
+          performerRoast: `Refund? You can't refund elapsed consciousness, champion! That 15 minutes of your life is officially archived in the Akashic records under 'Witnessed a Legend'. You're welcome. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Crowd Inversion: Convert collective booing into an irreversible cosmological gift.",
+          xpAward: 175,
+          reactionAnimation: "deadpan",
+          terpenePairingNote: `Heavy Limonene to smile directly into a hostile crowd roar.`
+        },
+        {
+          label: "Rotten Produce Artillery",
+          phrase: `*DOUBLE SPLAT!* An overripe eggplant and rotten egg smash into the stage monitors!`,
+          category: "projectile",
+          hecklerPersona: "Unforgiving Riot Squad in Row 2",
+          icon: "🥚",
+          performerRoast: `An eggplant and an egg? Mate, you didn't throw an insult, you threw an unfinished breakfast casserole! Super Puff exhales 800-degree dragon smoke and cooks your grief into a five-star meal. Times Up, Mother Fathers!`,
+          comedyTheoryTakeaway: "Alchemy of Ridicule: Transform hostile objects into gourmet absurdism.",
+          xpAward: 190,
+          reactionAnimation: "smoke_blast",
+          terpenePairingNote: `Pinene mental speed to improvise multi-object destruction.`
+        }
+      ];
+
+      const fallbacks = isBrutal ? brutalFallbacks : standardFallbacks;
+      const pool = preferredCategory && preferredCategory !== 'all'
+        ? fallbacks.filter(f => f.category === preferredCategory)
+        : fallbacks;
+      const selected = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : fallbacks[0];
+
+      return {
+        ...selected,
+        id: `heckle-gen-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        generatedBy: isBrutal ? 'local-brutal-engine' : 'local-contextual-engine',
+        actContext: actTitle,
+        persona: targetPersona,
+        isBrutal
+      };
+    };
+
+    if (!aiClient) {
+      return res.json({
+        success: true,
+        heckle: getContextualFallback(),
+        source: 'resilient-contextual',
+        persona: targetPersona,
+        isBrutal
+      });
+    }
+
+    try {
+      const personaProfiles: Record<string, string> = {
+        the_heckler: 'AUDIENCE PERSONA: "The Heckler" (Aggressive, impatient, sneering front-row heckler challenging jokes, timing, or asking him to wrap it up)',
+        the_fan: 'AUDIENCE PERSONA: "The Fan" (Over-hyped, breathless superfan shouting adoration, screaming catchphrases, and asking for callbacks)',
+        the_critic: 'AUDIENCE PERSONA: "The Critic" (Pretentious, snobbish British/academic theater critic using highbrow terminology like semiotics, narrative throughline, and dramaturgy)',
+        the_tech_bro: 'AUDIENCE PERSONA: "The Tech Bro" (Silicon Valley angel investor asking about CAC/LTV, crypto tokenomics, and pivoting to autonomous AI agents)',
+        the_drunk: 'AUDIENCE PERSONA: "The Drunk" (Slurred, boisterous, laughing late, friendly but chaotic and spilling beer)',
+      };
+      const personaInstruction = personaProfiles[targetPersona] || personaProfiles.the_heckler;
+
+      const prompt = `You are the real-time AI Heckler Engine for an interactive stand-up comedy special starring "Dragon 9" (aka "Super Puff")—an interdimensional, hyper-conscious, polite, dry Kiwi-accented stoner dragon comedian.
+The performance is happening LIVE on stage right now!
+
+CURRENT PERFORMANCE CONTEXT:
+- Act Playing: "${actTitle}"
+- Act Joke Premise/Bit: "${actBit}"
+- Topic / Comedy Theory: "${actTopic}"
+- Performer Active Cannabis Strain: "${strain}"
+- Composure: ${composure}%
+- Comedy Rank: "${rankTitle}" (XP: ${comedyXp})
+- Disruption Chaos Level: "${chaos}"
+- Preferred Disruption Category: "${preferredCategory || 'any'}"
+- ${personaInstruction}
+${isBrutal ? `*** 💀 BRUTAL MODE ENGAGED 💀 ***
+This is the ultimate ruthless comedy crucible.
+The audience heckler is NOT gentle. They are a cutthroat, hostile, hyper-critical spectator delivering a vicious interruption strictly matching the persona above.
+They must deliver a savage, cutting, high-stakes interruption that targets Dragon 9's specific bit, his stoner logic, his timing, or the audience's patience.
+Dragon 9 MUST deliver an equally scorched-earth, hilarious, devastating Kiwi stoner takedown that incinerates the heckler's ego, asserts absolute dominance over the room, and emphatically concludes with or features: "Times Up, Mother Fathers!".
+Award high XP between 150 and 250 for surviving this brutal test.` : `TASK:
+Generate an impromptu, randomized heckle disruption from an audience member strictly matching the AUDIENCE PERSONA described above, reacting specifically to what Dragon 9 is doing or saying on stage in this act.
+The heckler delivers their line in character.
+Also generate Dragon 9's instant devastating counter-roast in character (polite Kiwi hospitality mixed with lethal comic timing and stoner swagger, ending with or featuring his signature catchphrase: "Times Up, Mother Fathers!").`}
+
+Return ONLY valid JSON matching this exact structure:
+{
+  "label": "Short punchy disruption name (2-4 words)",
+  "phrase": "The exact shouted heckle words or sound effect description in character",
+  "category": "audio" | "projectile" | "disruption" | "crowd",
+  "hecklerPersona": "Descriptive persona title (e.g. 'The Critic (Snooty Reviewer)' or 'The Fan (Breathless Stan)')",
+  "icon": "A single emoji representing the disruption",
+  "performerRoast": "Dragon 9's instant devastating dry Kiwi stoner comeback that wins back the room and restores composure, ending with 'Times Up, Mother Fathers!'",
+  "comedyTheoryTakeaway": "Stand-up comedy theory rule or technique applied (e.g. 'Status Inversion', 'Room Parity Principle', 'Absurd Escalation')",
+  "xpAward": ${isBrutal ? 180 : 65},
+  "reactionAnimation": "laser_track" | "eyebrow_raise" | "smoke_blast" | "dodge" | "deadpan",
+  "terpenePairingNote": "Brief tip on terpene profile calibration for comedic poise"
+}`;
+
+      const response = await aiClient.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+        }
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      if (!parsed.phrase || !parsed.performerRoast) {
+        throw new Error('Invalid JSON structure from Gemini');
+      }
+
+      const validAnimations = ['laser_track', 'eyebrow_raise', 'smoke_blast', 'dodge', 'deadpan', 'surprised'];
+      const reactionAnimation = validAnimations.includes(parsed.reactionAnimation) ? parsed.reactionAnimation : 'eyebrow_raise';
+
+      const heckle = {
+        id: `heckle-gemini-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        label: parsed.label || 'Contextual Interruption',
+        phrase: parsed.phrase,
+        category: ['audio', 'projectile', 'disruption', 'crowd'].includes(parsed.category) ? parsed.category : 'audio',
+        hecklerPersona: parsed.hecklerPersona || 'Audience Spectator',
+        icon: parsed.icon || '🎙️',
+        performerRoast: parsed.performerRoast,
+        comedyTheoryTakeaway: parsed.comedyTheoryTakeaway || 'Status Inversion',
+        xpAward: Number(parsed.xpAward) || 65,
+        reactionAnimation,
+        terpenePairingNote: parsed.terpenePairingNote || 'Balanced hybrid focus',
+        generatedBy: 'gemini-3.8-flash',
+        actContext: actTitle,
+        persona: targetPersona,
+      };
+
+      return res.json({
+        success: true,
+        heckle,
+        source: 'gemini-api',
+        persona: targetPersona,
+      });
+    } catch (err: any) {
+      console.warn('[Heckler Engine] Gemini generation note / fallback engaged:', err?.message || err);
+      const fallback = getContextualFallback();
+      return res.json({
+        success: true,
+        heckle: fallback,
+        source: 'resilient-contextual',
+        note: 'Rendered via local contextual fallback engine'
+      });
     }
   });
 

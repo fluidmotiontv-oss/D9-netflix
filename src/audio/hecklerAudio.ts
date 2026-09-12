@@ -1,5 +1,34 @@
 // Procedural Web Audio and Speech Synthesis for Heckler Interruption & Crowd Reactions
 
+import { 
+  HecklerPersonaId, 
+  HecklerPersonaConfig, 
+  HECKLER_PERSONAS, 
+  HECKLER_PERSONA_LIST,
+  speakHeckleWithPersona,
+  auditionPersonaVoice,
+  cleanHeckleTextForSpeech,
+  stopAllSpeech,
+  getHecklerPersona,
+  findBestVoiceForPersona,
+  loadBrowserVoices,
+  getLoadedVoices
+} from './hecklerPersonas';
+
+export type { HecklerPersonaId, HecklerPersonaConfig };
+export { 
+  HECKLER_PERSONAS, 
+  HECKLER_PERSONA_LIST, 
+  speakHeckleWithPersona, 
+  auditionPersonaVoice, 
+  cleanHeckleTextForSpeech, 
+  stopAllSpeech, 
+  getHecklerPersona, 
+  findBestVoiceForPersona, 
+  loadBrowserVoices, 
+  getLoadedVoices 
+};
+
 let audioCtx: AudioContext | null = null;
 
 function getAudioContext(): AudioContext {
@@ -21,10 +50,18 @@ export type HeckleType =
   | 'laser'
   | 'crickets'
   | 'drunk_woo'
-  | 'boo';
+  | 'boo'
+  | 'pitch_unit_economics'
+  | 'pitch_pivot_ai'
+  | 'paper_airplane'
+  | 'mic_screech'
+  | 'brutal_critic'
+  | 'brutal_rotten_egg'
+  | 'brutal_heckler_swarm'
+  | 'brutal_glass_shatter';
 
 export interface HeckleItem {
-  id: HeckleType;
+  id: HeckleType | string;
   label: string;
   category: 'audio' | 'projectile' | 'disruption' | 'crowd';
   phrase: string;
@@ -35,6 +72,8 @@ export interface HeckleItem {
   comedyTheoryTakeaway: string;
   terpenePairingNote: string;
   xpAward: number;
+  isBrutal?: boolean;
+  persona?: HecklerPersonaId;
 }
 
 export const HECKLE_PRESETS: HeckleItem[] = [
@@ -50,6 +89,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Rule of Status Inversion: Disarm audience anxiety by questioning the sanctity of their mundane routine.',
     terpenePairingNote: 'High Myrcene strain required to resist the impulse to speed up delivery.',
     xpAward: 45,
+    persona: 'the_heckler'
   },
   {
     id: 'tomato',
@@ -63,6 +103,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Physical Misdirection: Transform hostile projectile disruption into economic observational humor.',
     terpenePairingNote: 'Caryophyllene for rapid-twitch physical dodge reflexes and spicy retort delivery.',
     xpAward: 60,
+    persona: 'the_heckler'
   },
   {
     id: 'pass_blunt',
@@ -76,6 +117,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Connoisseur Gatekeeping: Elevate your prop into a mythical artifact to establish comedic authority.',
     terpenePairingNote: 'Quantum Diesel with high Terpinolene for electric crowd banter.',
     xpAward: 50,
+    persona: 'the_fan'
   },
   {
     id: 'ringtone',
@@ -89,6 +131,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Tension Absorption: Acknowledge external noise immediately so the audience does not split attention.',
     terpenePairingNote: 'Linalool calm keeps the heart rate steady when an audio spike interrupts the rhythm.',
     xpAward: 55,
+    persona: 'the_tech_bro'
   },
   {
     id: 'laser',
@@ -102,6 +145,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Visual Integration: Follow the laser with your eyes to turn the heckler into an unwitting co-performer.',
     terpenePairingNote: 'Pinene for hyper-dilated pupil focus and visual tracking precision.',
     xpAward: 65,
+    persona: 'the_heckler'
   },
   {
     id: 'babylonian',
@@ -115,6 +159,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Historical Deconstruction: Attack the foundational premise of ancient societal norms with deadpan mockery.',
     terpenePairingNote: 'Limonene for playful intellectual dissection without sounding bitter.',
     xpAward: 50,
+    persona: 'the_critic'
   },
   {
     id: 'crickets',
@@ -128,6 +173,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'The Bomb Recovery Beat: Confess the silence immediately to convert awkwardness into an meta-laugh.',
     terpenePairingNote: 'Heavy Indica resin ring keeps the comedian unbothered by cold rooms.',
     xpAward: 40,
+    persona: 'the_heckler'
   },
   {
     id: 'drunk_woo',
@@ -141,6 +187,7 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Crowd Work Moderation: Channel excessive energy into a friendly reality-check without alienating the room.',
     terpenePairingNote: 'Balanced Hybrid for maintaining diplomatic politeness under loud chaos.',
     xpAward: 45,
+    persona: 'the_drunk'
   },
   {
     id: 'boo',
@@ -154,44 +201,156 @@ export const HECKLE_PRESETS: HeckleItem[] = [
     comedyTheoryTakeaway: 'Unflinching Stoicism: Channel legendary anti-establishment defiance to win back audience respect.',
     terpenePairingNote: 'High Humulene prevents defensive anger, preserving effortless swagger.',
     xpAward: 70,
+    persona: 'the_heckler'
+  },
+  {
+    id: 'pitch_unit_economics',
+    label: 'Show Unit Economics!',
+    category: 'audio',
+    phrase: 'What is your CAC to LTV ratio?! Show us the unit economics!',
+    description: 'Aggressive Silicon Valley angel investor demanding spreadsheet metrics.',
+    icon: '📊',
+    performerRoast: 'CAC to LTV? Mate, our CAC is zero because consciousness is open source, and our LTV is eternal recursion. 電卓叩いてないで笑え (Put the calculator down and smile). Super Puff has higher margins than quantum vacuum. Times Up, Mother Fathers!',
+    reactionAnimation: 'eyebrow_raise',
+    comedyTheoryTakeaway: 'Corporate Jargon Subversion: Deconstruct VC buzzwords using higher-dimensional philosophical absurdity.',
+    terpenePairingNote: 'Limonene + Pinene for razor-sharp analytical retort cadence.',
+    xpAward: 65,
+    persona: 'the_tech_bro'
+  },
+  {
+    id: 'pitch_pivot_ai',
+    label: 'Pivot To AI!',
+    category: 'audio',
+    phrase: 'Pivot to AI agents or we are pulling the term sheet right now!',
+    description: 'Venture Capitalist threatening to revoke funding without AI keywords.',
+    icon: '🤖',
+    performerRoast: 'Mate, I AM the neural network. We didn\'t train on GPUs, we trained on 4,000 years of dragon smoke and timing. タームシート持って帰れ (Take your term sheet and go home). Super Puff is already post-AGI. Times Up, Mother Fathers!',
+    reactionAnimation: 'smoke_blast',
+    comedyTheoryTakeaway: 'Authority Inversion: Reject investor leverage by proving your art precedes their speculative bubble.',
+    terpenePairingNote: 'Quantum Diesel for electric anti-corporate stage presence.',
+    xpAward: 75,
+    persona: 'the_tech_bro'
+  },
+  {
+    id: 'paper_airplane',
+    label: 'Crumpled Pitch Deck Plane',
+    category: 'projectile',
+    phrase: '*Whoosh* *Crumpled paper deck flies across the stage*',
+    description: 'Audience member throws a folded pitch deck airplane at the podium.',
+    icon: '✈️',
+    performerRoast: 'Nice aerodynamics on page 4, mate. Too bad your financial projections have more friction than sandpaper. 折り紙の修行が足りないぜ (Your origami skills need practice). Super Puff glides on pure thermals. Times Up, Mother Fathers!',
+    reactionAnimation: 'dodge',
+    comedyTheoryTakeaway: 'Physical Prop Re-Purposing: Catch or dodge incoming debris and critique the craftsmanship of the throw.',
+    terpenePairingNote: 'Myrcene + Caryophyllene for agile physical reactions.',
+    xpAward: 55,
+    persona: 'the_critic'
+  },
+  {
+    id: 'mic_screech',
+    label: 'Ear-Splitting Mic Feedback',
+    category: 'disruption',
+    phrase: '*SKREEEEECH!* *High-frequency PA feedback howl*',
+    description: 'Sound technician accidentally clips the stage monitor gain.',
+    icon: '🔊',
+    performerRoast: 'Shoutout to the sound guy in the booth waking up the astral plane. 音響さん、起きてるか？ (Sound tech, you awake back there?). Super Puff\'s vocal velvet can tame any 8kHz spike. Times Up, Mother Fathers!',
+    reactionAnimation: 'surprised',
+    comedyTheoryTakeaway: 'Audio Malfunction Capitalization: Address technical glitches instantly with sound-engineer camaraderie.',
+    terpenePairingNote: 'Linalool soothing notes prevent ear fatigue and maintain vocal warmth.',
+    xpAward: 50,
+  },
+  {
+    id: 'brutal_critic',
+    label: 'Ruthless Front-Row Heckler Mob',
+    category: 'audio',
+    phrase: 'GET OFF THE STAGE! Your timing is completely broken and this whole weed routine is washed!',
+    description: 'Hostile front-row heckler screaming aggressive insults at maximum volume.',
+    icon: '💀',
+    performerRoast: 'Washed? Mate, I\'ve headlined venues in dimensions your bloodline hasn\'t even evolved to comprehend yet. You paid front-row VIP money just to advertise your spiritual bankruptcy? Drink some water, quiet down, and take notes. Times Up, Mother Fathers!',
+    reactionAnimation: 'smoke_blast',
+    comedyTheoryTakeaway: 'Scorched-Earth Dominance: When the disruption turns genuinely hostile, obliterate status parity with cosmological superiority.',
+    terpenePairingNote: 'High Caryophyllene for assertive, fiery counter-punch.',
+    xpAward: 180,
+    isBrutal: true,
+    persona: 'the_heckler'
+  },
+  {
+    id: 'brutal_glass_shatter',
+    label: 'Flying Pint Glass Shards',
+    category: 'projectile',
+    phrase: '*CRASH!* A heavy beer pint hurled from the balcony shatters against the footlights!',
+    description: 'Direct hostile glassware projectile shattering with sharp glass debris.',
+    icon: '💥',
+    performerRoast: 'Throwing glassware at an interdimensional dragon? Mate, in the 5th dimension, that glass just reassembled itself and billed your Apple Wallet for a $500 venue repair deposit. Keep tossing, you\'re financing my private jet. Times Up, Mother Fathers!',
+    reactionAnimation: 'dodge',
+    comedyTheoryTakeaway: 'Violent Disruption Reversal: Deflect physical attacks by mocking the thrower\'s financial self-destruction.',
+    terpenePairingNote: 'Myrcene + Terpinolene reflex lock for zero-flinch evasion.',
+    xpAward: 200,
+    isBrutal: true,
+    persona: 'the_drunk'
+  },
+  {
+    id: 'brutal_rotten_egg',
+    label: 'Double Rotten Produce Artillery',
+    category: 'projectile',
+    phrase: '*DOUBLE SPLAT!* An overripe eggplant and rotten egg smash into the stage monitors!',
+    description: 'High-velocity rotten produce barrage aimed straight at the mic.',
+    icon: '🥚',
+    performerRoast: 'An eggplant and an egg? Mate, you didn\'t throw an insult, you threw an unfinished breakfast scramble! Super Puff exhales 800-degree dragon smoke and cooks your hostility into a Michelin-star brunch. Times Up, Mother Fathers!',
+    reactionAnimation: 'smoke_blast',
+    comedyTheoryTakeaway: 'Alchemy of Ridicule: Transform hostile projectiles into absurd culinary mastery.',
+    terpenePairingNote: 'Pinene focus to improvise multi-object destruction.',
+    xpAward: 190,
+    isBrutal: true,
+    persona: 'the_critic'
+  },
+  {
+    id: 'brutal_heckler_swarm',
+    label: 'Hostile Pitch Review Chorus',
+    category: 'crowd',
+    phrase: 'BOOOOOOO! WE WANT A REFUND! YOUR BITS MAKE NO SENSE!',
+    description: 'Synchronized hostile chorus demanding full ticket refunds.',
+    icon: '📢',
+    performerRoast: 'Refund? You can\'t refund elapsed consciousness, champion! That 15 minutes of your life is officially archived in the Akashic records under \'Witnessed a Legend\'. You\'re welcome. Times Up, Mother Fathers!',
+    reactionAnimation: 'deadpan',
+    comedyTheoryTakeaway: 'Crowd Inversion: Treat hostile boos as an irreversible cosmological blessing.',
+    terpenePairingNote: 'Heavy Limonene to smile directly into a hostile roar.',
+    xpAward: 175,
+    isBrutal: true,
+    persona: 'the_fan' // Ironic fan mob
   },
 ];
 
 // Speak using SpeechSynthesis with custom voice characteristics
-export function speakHeckle(text: string, isPerformer = false, isSuperPuff = true) {
+export function speakHeckle(text: string, isPerformer = false, isSuperPuff = true, personaId: HecklerPersonaId = 'the_heckler') {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+  if (!isPerformer) {
+    // Route through Web Speech API Heckler Persona handler
+    speakHeckleWithPersona(text, personaId);
+    return;
+  }
 
   try {
     window.speechSynthesis.cancel(); // Stop any pending speech
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Choose voice if available
-    const voices = window.speechSynthesis.getVoices();
-    if (isPerformer) {
-      // Deep, ultra-smooth, confident baritone for Super Puff Dragon comedian
-      utterance.pitch = isSuperPuff ? 0.68 : 0.75;
-      utterance.rate = isSuperPuff ? 0.90 : 0.95;
-      utterance.volume = 1.0;
-      
-      // If text contains Japanese characters, try finding a Japanese voice or default to smooth male
-      const hasJapanese = /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]/.test(text);
-      if (hasJapanese) {
-        const jaVoice = voices.find(v => v.lang.includes('ja') || v.lang.includes('ja-JP'));
-        if (jaVoice) {
-          utterance.voice = jaVoice;
-          utterance.rate = 0.92;
-        }
-      } else {
-        const enVoice = voices.find(v => v.lang.includes('en-NZ') || v.lang.includes('en-AU') || v.lang.includes('en-GB') || v.name.toLowerCase().includes('male'));
-        if (enVoice) utterance.voice = enVoice;
+    // Deep, ultra-smooth, confident baritone for Super Puff Dragon comedian
+    utterance.pitch = isSuperPuff ? 0.68 : 0.75;
+    utterance.rate = isSuperPuff ? 0.90 : 0.95;
+    utterance.volume = 1.0;
+    
+    const voices = getLoadedVoices();
+    // If text contains Japanese characters, try finding a Japanese voice or default to smooth male
+    const hasJapanese = /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]/.test(text);
+    if (hasJapanese) {
+      const jaVoice = voices.find(v => v.lang.includes('ja') || v.lang.includes('ja-JP'));
+      if (jaVoice) {
+        utterance.voice = jaVoice;
+        utterance.rate = 0.92;
       }
     } else {
-      // Shrill / urgent heckler voice
-      utterance.pitch = 1.35;
-      utterance.rate = 1.15;
-      utterance.volume = 0.9;
-      const hecklerVoice = voices.find(v => v.name.toLowerCase().includes('david') || v.lang.includes('en-US') || v.lang.includes('en'));
-      if (hecklerVoice) utterance.voice = hecklerVoice;
+      const enVoice = voices.find(v => v.lang.includes('en-NZ') || v.lang.includes('en-AU') || v.lang.includes('en-GB') || v.name.toLowerCase().includes('male'));
+      if (enVoice) utterance.voice = enVoice;
     }
 
     window.speechSynthesis.speak(utterance);
@@ -259,7 +418,7 @@ export function playSuperPuffDropSfx() {
 }
 
 // Procedural SFX for different heckle triggers
-export function playHeckleSfx(type: HeckleType) {
+export function playHeckleSfx(type: HeckleType | string) {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
@@ -400,6 +559,141 @@ export function playHeckleSfx(type: HeckleType) {
           osc.start(now);
           osc.stop(now + 1.3);
         });
+        break;
+      }
+
+      case 'pitch_unit_economics': {
+        // Electronic cash register / calculator beep + error tone
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(1760, now + 0.08);
+        osc.frequency.setValueAtTime(440, now + 0.16);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.36);
+        break;
+      }
+
+      case 'pitch_pivot_ai': {
+        // Robotic glitch modem dialup pulse
+        [440, 880, 1320, 1760].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + idx * 0.05 + 0.08);
+          gain.gain.setValueAtTime(0.15, now + idx * 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.05 + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.05);
+          osc.stop(now + idx * 0.05 + 0.09);
+        });
+        break;
+      }
+
+      case 'paper_airplane': {
+        // Gentle paper whoosh and flutter
+        const bufferSize = ctx.sampleRate * 0.5;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1400, now);
+        filter.frequency.exponentialRampToValueAtTime(600, now + 0.45);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start(now);
+        break;
+      }
+
+      case 'mic_screech': {
+        // High frequency 3.8kHz to 4.5kHz piercing mic feedback howl
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(3200, now);
+        osc.frequency.linearRampToValueAtTime(4200, now + 0.2);
+        osc.frequency.exponentialRampToValueAtTime(2800, now + 0.6);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.linearRampToValueAtTime(0.4, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.66);
+        break;
+      }
+
+      case 'brutal_glass_shatter': {
+        // Harsh high-frequency noise bursts simulating shattered tempered glass
+        const bufferSize = ctx.sampleRate * 0.45;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(2400, now);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start(now);
+        break;
+      }
+
+      case 'brutal_rotten_egg': {
+        // Double heavy wet splat
+        [0, 0.14].forEach((offset) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, now + offset);
+          osc.frequency.exponentialRampToValueAtTime(45, now + offset + 0.2);
+          gain.gain.setValueAtTime(0.45, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.22);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.23);
+        });
+        break;
+      }
+
+      case 'brutal_critic':
+      case 'brutal_heckler_swarm': {
+        // Hostile rumble + crowd jeer sub-drop
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.linearRampToValueAtTime(90, now + 0.35);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.55);
         break;
       }
 
@@ -675,6 +969,172 @@ export function playSuperPuffPeakChime(): void {
     });
   } catch (e) {
     console.warn(e);
+  }
+}
+
+/**
+ * Speech synthesis with custom pitch, rate, and voice accents
+ */
+export function speakWithCustomPitch(phrase: string, pitch: number = 1.0, rate: number = 1.0): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(phrase);
+    utterance.pitch = Math.max(0.1, Math.min(2.0, pitch));
+    utterance.rate = Math.max(0.1, Math.min(2.0, rate));
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      const enVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+      utterance.voice = enVoice;
+    }
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.warn('Speech synthesis warning:', e);
+  }
+}
+
+/**
+ * Procedural Brutal Mode Activation Siren & Dark Sub-Drop
+ */
+export function playBrutalModeIntroSfx(): void {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    // Dark aggressive bass drop (sawtooth + square detune)
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sawtooth';
+    subOsc.frequency.setValueAtTime(110, now);
+    subOsc.frequency.exponentialRampToValueAtTime(32, now + 1.2);
+    subGain.gain.setValueAtTime(0.55, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
+    subOsc.connect(subGain);
+    subGain.connect(ctx.destination);
+    subOsc.start(now);
+    subOsc.stop(now + 1.7);
+
+    // Warning alert siren pulses (2 descending laser bursts)
+    [0, 0.28, 0.56].forEach((offset) => {
+      const siren = ctx.createOscillator();
+      const sirenGain = ctx.createGain();
+      siren.type = 'triangle';
+      siren.frequency.setValueAtTime(880, now + offset);
+      siren.frequency.exponentialRampToValueAtTime(380, now + offset + 0.22);
+      sirenGain.gain.setValueAtTime(0.28, now + offset);
+      sirenGain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.24);
+      siren.connect(sirenGain);
+      sirenGain.connect(ctx.destination);
+      siren.start(now + offset);
+      siren.stop(now + offset + 0.25);
+    });
+  } catch (e) {
+    console.warn('Brutal intro audio warning:', e);
+  }
+}
+
+/**
+ * Stage Meltdown SFX: Piercing feedback, noise burst, and crowd failure tone
+ */
+export function playStageMeltdownSfx(): void {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    // Screaming frequency descent
+    const screech = ctx.createOscillator();
+    const screechGain = ctx.createGain();
+    screech.type = 'sawtooth';
+    screech.frequency.setValueAtTime(2200, now);
+    screech.frequency.exponentialRampToValueAtTime(65, now + 1.8);
+    screechGain.gain.setValueAtTime(0.4, now);
+    screechGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+    screech.connect(screechGain);
+    screechGain.connect(ctx.destination);
+    screech.start(now);
+    screech.stop(now + 2.1);
+
+    // Distortion noise burst
+    const bufferSize = ctx.sampleRate * 1.5;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.4));
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1200, now);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.3, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start(now);
+  } catch (e) {
+    console.warn('Meltdown audio warning:', e);
+  }
+}
+
+/**
+ * Dragon Smoke Defibrillator SFX: Bong bubble percolation + electric shock zap + victorious dragon roar
+ */
+export function playDragonDefibrillatorSfx(): void {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    // Bong water bubbling rapid pulses
+    for (let i = 0; i < 14; i++) {
+      const bubble = ctx.createOscillator();
+      const bubbleGain = ctx.createGain();
+      const bTime = now + i * 0.045;
+      const freq = 220 + Math.random() * 320;
+      bubble.type = 'sine';
+      bubble.frequency.setValueAtTime(freq, bTime);
+      bubble.frequency.exponentialRampToValueAtTime(freq * 1.8, bTime + 0.04);
+      bubbleGain.gain.setValueAtTime(0.25, bTime);
+      bubbleGain.gain.exponentialRampToValueAtTime(0.001, bTime + 0.042);
+      bubble.connect(bubbleGain);
+      bubbleGain.connect(ctx.destination);
+      bubble.start(bTime);
+      bubble.stop(bTime + 0.045);
+    }
+
+    // High energy electric resuscitation shock zap
+    const zapTime = now + 0.65;
+    const zap = ctx.createOscillator();
+    const zapGain = ctx.createGain();
+    zap.type = 'sawtooth';
+    zap.frequency.setValueAtTime(950, zapTime);
+    zap.frequency.exponentialRampToValueAtTime(140, zapTime + 0.4);
+    zapGain.gain.setValueAtTime(0.5, zapTime);
+    zapGain.gain.exponentialRampToValueAtTime(0.001, zapTime + 0.45);
+    zap.connect(zapGain);
+    zapGain.connect(ctx.destination);
+    zap.start(zapTime);
+    zap.stop(zapTime + 0.46);
+
+    // Warm victorious chord bloom
+    const chordTime = zapTime + 0.25;
+    const freqs = [196.00, 246.94, 293.66, 392.00, 493.88]; // G major 9th bloom
+    freqs.forEach((f) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, chordTime);
+      g.gain.setValueAtTime(0.12, chordTime);
+      g.gain.exponentialRampToValueAtTime(0.001, chordTime + 1.8);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(chordTime);
+      osc.stop(chordTime + 1.9);
+    });
+  } catch (e) {
+    console.warn('Defibrillator audio warning:', e);
   }
 }
 

@@ -25,7 +25,15 @@ import {
   Sliders,
   Flame,
   Award,
-  Zap
+  Zap,
+  Eye,
+  EyeOff,
+  Grid,
+  Crosshair,
+  ShieldCheck,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   ScriptCue,
@@ -71,6 +79,9 @@ export default function VideoExportUtility({
   const [durationMode, setDurationMode] = useState<60 | 180>(60);
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9'>('9:16');
   const [targetLanguage, setTargetLanguage] = useState<SupportedLanguage | 'EN'>('EN');
+  const [fps, setFps] = useState<25 | 30 | 60>(25);
+  const [videoFormat, setVideoFormat] = useState<'mp4' | 'webm'>('mp4');
+  const [recordedMimeType, setRecordedMimeType] = useState<string>('video/mp4');
   
   // Audio & Overlay Options
   const [includeVoice, setIncludeVoice] = useState(true);
@@ -88,6 +99,36 @@ export default function VideoExportUtility({
   const [activeTimingBlock, setActiveTimingBlock] = useState<TimingBlock | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [batchExportProgress, setBatchExportProgress] = useState<number | null>(null);
+
+  // Preview Export & Layer Inspection State
+  const [previewExportMode, setPreviewExportMode] = useState(true);
+  const [layers, setLayers] = useState<{ background: boolean; actor: boolean; overlay: boolean }>({
+    background: true,
+    actor: true,
+    overlay: true,
+  });
+  const [showSafeZones, setShowSafeZones] = useState(true);
+  const [showCompositionGrid, setShowCompositionGrid] = useState(true);
+  const [showLayerTags, setShowLayerTags] = useState(true);
+
+  // Helper to toggle a single layer
+  const toggleLayer = (layerName: 'background' | 'actor' | 'overlay') => {
+    setLayers(prev => ({ ...prev, [layerName]: !prev[layerName] }));
+  };
+
+  // Helper to solo a layer
+  const soloLayer = (layerName: 'background' | 'actor' | 'overlay') => {
+    setLayers({
+      background: layerName === 'background',
+      actor: layerName === 'actor',
+      overlay: layerName === 'overlay',
+    });
+  };
+
+  // Helper to enable all layers
+  const resetAllLayers = () => {
+    setLayers({ background: true, actor: true, overlay: true });
+  };
 
   // Canvas & Audio References
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -257,7 +298,7 @@ export default function VideoExportUtility({
   }, [includeVoice, targetLanguage, speechRate]);
 
   // Canvas Frame Drawing Loop (Renders high-fidelity stage visuals with complete dragon face & layers)
-  const drawFrame = useCallback((timestamp: number, currentTimeSec: number) => {
+  const drawFrame = useCallback((timestamp: number, currentTimeSec: number, recordingMode = false) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -284,8 +325,125 @@ export default function VideoExportUtility({
       primaryColor: '#22c55e',
       accentColor: '#a855f7',
       isSpeaking: isPlayingPreview || isRecording,
+      fps,
+      videoFormat,
+      layers: recordingMode ? { background: true, actor: true, overlay: true } : layers,
+      previewExportMode: recordingMode ? false : previewExportMode,
+      showSafeZones: recordingMode ? false : showSafeZones,
+      showCompositionGrid: recordingMode ? false : showCompositionGrid,
+      showLayerTags: recordingMode ? false : showLayerTags,
     });
-  }, [cues, activeCueIndex, durationMode, targetLanguage, currentPreset.title, currentPreset.theme, aspectRatio, includeSubtitles, includeTimingVisualizer, isPlayingPreview, isRecording]);
+  }, [cues, activeCueIndex, durationMode, targetLanguage, currentPreset.title, currentPreset.theme, aspectRatio, includeSubtitles, includeTimingVisualizer, isPlayingPreview, isRecording, fps, videoFormat, layers, previewExportMode, showSafeZones, showCompositionGrid, showLayerTags]);
+
+  // Live Continuous Animation Loop when not recording so Preview Export updates in real-time
+  useEffect(() => {
+    if (isRecording || recordedVideoUrl) return;
+
+    let animId: number;
+    const canvas = canvasRef.current;
+    if (canvas) {
+      if (aspectRatio === '9:16') {
+        canvas.width = 720;
+        canvas.height = 1280;
+      } else {
+        canvas.width = 1280;
+        canvas.height = 720;
+      }
+    }
+
+    const render = (time: number) => {
+      drawFrame(time, playbackTime, false);
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animId);
+  }, [isRecording, recordedVideoUrl, playbackTime, drawFrame, aspectRatio]);
+
+  // Interactive Preview Playback (with audio & speech testing without recording)
+  const togglePreviewPlayback = () => {
+    if (isPlayingPreview) {
+      setIsPlayingPreview(false);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    } else {
+      setIsPlayingPreview(true);
+      if (playbackTime >= targetDuration) {
+        setPlaybackTime(0);
+      }
+      
+      // Play speech of current cue
+      const activeCue = cues[activeCueIndex] || cues[0];
+      if (activeCue) {
+        speakCurrentScriptCue(activeCue);
+      }
+
+      timerIntervalRef.current = setInterval(() => {
+        setPlaybackTime((prev) => {
+          const next = prev + 0.5;
+          if (next >= targetDuration) {
+            setIsPlayingPreview(false);
+            clearInterval(timerIntervalRef.current);
+            return 0;
+          }
+          return next;
+        });
+      }, 500);
+    }
+  };
+
+  // Step Frame / Seconds
+  const stepTime = (deltaSec: number) => {
+    setPlaybackTime(prev => {
+      const next = Math.max(0, Math.min(targetDuration, prev + deltaSec));
+      return Number(next.toFixed(1));
+    });
+  };
+
+  // Jump directly to a cue
+  const jumpToCue = (index: number) => {
+    if (index >= 0 && index < cues.length) {
+      setActiveCueIndex(index);
+      setPlaybackTime(cues[index].startTime);
+      if (isPlayingPreview) {
+        speakCurrentScriptCue(cues[index]);
+      }
+    }
+  };
+
+  // Helper to determine best matching mimeType for chosen container format
+  const getOptimalMimeType = (format: 'mp4' | 'webm'): string => {
+    if (format === 'mp4') {
+      const mp4Candidates = [
+        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+        'video/mp4;codecs=avc1.4D401E,mp4a.40.2',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4;codecs=avc1',
+        'video/mp4',
+      ];
+      for (const candidate of mp4Candidates) {
+        if (MediaRecorder.isTypeSupported(candidate)) return candidate;
+      }
+      // Graceful fallback if browser does not support native MP4 MediaRecorder
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) return 'video/webm;codecs=vp9,opus';
+      return 'video/webm';
+    } else {
+      const webmCandidates = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+      ];
+      for (const candidate of webmCandidates) {
+        if (MediaRecorder.isTypeSupported(candidate)) return candidate;
+      }
+      return 'video/webm';
+    }
+  };
 
   // Start Real-Time Highlight Video Recording
   const startRecording = async () => {
@@ -307,8 +465,8 @@ export default function VideoExportUtility({
       canvas.height = 720;
     }
 
-    // 1. Capture stream from canvas
-    const canvasStream = canvas.captureStream(30);
+    // 1. Capture stream from canvas at selected frame rate (e.g. 25 fps)
+    const canvasStream = canvas.captureStream(fps);
 
     // 2. Initialize procedural audio destination
     const audioStream = initAudioStream();
@@ -320,19 +478,14 @@ export default function VideoExportUtility({
     ];
     const combinedStream = new MediaStream(combinedTracks);
 
-    // 4. Determine supported mimeType
-    let mimeType = 'video/webm;codecs=vp9,opus';
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-      mimeType = 'video/webm';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/mp4';
-      }
-    }
+    // 4. Determine supported mimeType based on requested container
+    const mimeType = getOptimalMimeType(videoFormat);
+    setRecordedMimeType(mimeType);
 
     try {
       const recorder = new MediaRecorder(combinedStream, {
         mimeType: MediaRecorder.isTypeSupported(mimeType) ? mimeType : undefined,
-        videoBitsPerSecond: 3500000,
+        videoBitsPerSecond: 4000000,
       });
 
       recorder.ondataavailable = (event) => {
@@ -384,7 +537,7 @@ export default function VideoExportUtility({
 
     // Animation Render Loop
     const renderLoop = (time: number) => {
-      drawFrame(time, elapsed);
+      drawFrame(time, elapsed, true);
       animationFrameRef.current = requestAnimationFrame(renderLoop);
     };
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -414,9 +567,9 @@ export default function VideoExportUtility({
     if (!recordedVideoUrl) return;
     const a = document.createElement('a');
     a.href = recordedVideoUrl;
-    const ext = recordedVideoUrl.includes('mp4') ? 'mp4' : 'webm';
+    const ext = recordedMimeType.includes('mp4') || videoFormat === 'mp4' ? 'mp4' : 'webm';
     const langSlug = targetLanguage;
-    a.download = `Dragon9_Highlight_${durationMode}Sec_${currentPreset.id}_${langSlug}_${aspectRatio === '9:16' ? 'Vertical' : 'Landscape'}.${ext}`;
+    a.download = `Dragon9_Highlight_${durationMode}Sec_${currentPreset.id}_${langSlug}_${aspectRatio === '9:16' ? 'Vertical' : 'Landscape'}_${fps}fps.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -668,6 +821,89 @@ export default function VideoExportUtility({
               </div>
             </div>
 
+            {/* Frame Rate Selection (25 FPS MP4 / 30 FPS / 60 FPS) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-mono uppercase text-white/50 block">
+                  Frame Rate (FPS)
+                </label>
+                <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                  {fps === 25 ? '25 FPS (PAL / Cinematic Broadcast)' : fps === 30 ? '30 FPS (NTSC / Social)' : '60 FPS (Ultra Smooth)'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                <button
+                  disabled={isRecording}
+                  onClick={() => setFps(25)}
+                  className={`py-2 px-2 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                    fps === 25
+                      ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/50'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <span className="text-xs font-black">25 FPS</span>
+                  <span className="text-[8px] text-white/40">PAL / Cinema</span>
+                </button>
+                <button
+                  disabled={isRecording}
+                  onClick={() => setFps(30)}
+                  className={`py-2 px-2 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                    fps === 30
+                      ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/50'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <span className="text-xs font-black">30 FPS</span>
+                  <span className="text-[8px] text-white/40">Standard</span>
+                </button>
+                <button
+                  disabled={isRecording}
+                  onClick={() => setFps(60)}
+                  className={`py-2 px-2 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                    fps === 60
+                      ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/50'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <span className="text-xs font-black">60 FPS</span>
+                  <span className="text-[8px] text-white/40">Smooth 60Hz</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Video Container & Codec Selection (MP4 vs WebM) */}
+            <div>
+              <label className="text-[10px] font-mono uppercase text-white/50 block mb-1.5">
+                Video Format Container
+              </label>
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <button
+                  disabled={isRecording}
+                  onClick={() => setVideoFormat('mp4')}
+                  className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-1.5 transition-all ${
+                    videoFormat === 'mp4'
+                      ? 'bg-gradient-to-r from-green-500/25 to-emerald-500/25 border-green-400 text-green-300 font-bold shadow-md ring-1 ring-green-400/40'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <Film className="w-3.5 h-3.5 text-green-400" />
+                  <span>MP4 (H.264 / AVC)</span>
+                </button>
+                <button
+                  disabled={isRecording}
+                  onClick={() => setVideoFormat('webm')}
+                  className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-1.5 transition-all ${
+                    videoFormat === 'webm'
+                      ? 'bg-gradient-to-r from-purple-500/25 to-pink-500/25 border-purple-400 text-purple-300 font-bold shadow-md ring-1 ring-purple-400/40'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <Film className="w-3.5 h-3.5 text-purple-400" />
+                  <span>WebM (VP9 / Opus)</span>
+                </button>
+              </div>
+            </div>
+
             {/* Audio Synthesis & Overlay Checkboxes */}
             <div className="space-y-2 pt-1 border-t border-white/5 font-mono text-[11px]">
               <label className="flex items-center justify-between text-white/80 cursor-pointer">
@@ -720,6 +956,195 @@ export default function VideoExportUtility({
         {/* Center / Right Column: Live Visualizer Stage & Timed Cues (8 Cols) */}
         <div className="lg:col-span-8 flex flex-col space-y-4">
           
+          {/* Preview Export & Layer Inspection Toolbar */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-3 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg ${previewExportMode ? 'bg-green-500/20 text-green-400 border border-green-500/40 shadow-[0_0_12px_rgba(34,197,94,0.3)]' : 'bg-white/10 text-white/40'}`}>
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold font-mono uppercase text-white tracking-wider">
+                      Preview Export Mode
+                    </span>
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-bold">
+                      Real-Time Layer Inspector
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-white/50 font-mono">
+                    Inspect Background, Actor, and Overlay layers before committing to render
+                  </p>
+                </div>
+              </div>
+
+              {/* Preview Export Mode Toggle */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPreviewExportMode(!previewExportMode)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                    previewExportMode 
+                      ? 'bg-green-500/20 border-green-500/60 text-green-300 shadow-sm'
+                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                  }`}
+                >
+                  {previewExportMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                  <span>{previewExportMode ? 'Overlay Active' : 'Overlay Hidden'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Layer Visibility & Solo Controls Matrix */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono">
+              {/* Layer 1: Background */}
+              <div className={`p-2.5 rounded-xl border transition-all ${
+                layers.background 
+                  ? 'bg-black/60 border-cyan-500/40 text-cyan-300' 
+                  : 'bg-black/30 border-white/5 text-white/30'
+              }`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                    L1: Background
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => soloLayer('background')}
+                      className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-white/60 hover:text-white"
+                      title="Solo Background Layer"
+                    >
+                      Solo
+                    </button>
+                    <button
+                      onClick={() => toggleLayer('background')}
+                      className={`p-1 rounded ${layers.background ? 'text-cyan-300 bg-cyan-500/20' : 'text-white/30 hover:text-white'}`}
+                      title="Toggle Background Visibility"
+                    >
+                      {layers.background ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[9px] text-white/50 leading-tight">
+                  Volumetric stage, 432Hz ambient light & Rec.709 void
+                </p>
+              </div>
+
+              {/* Layer 2: Actor Mesh */}
+              <div className={`p-2.5 rounded-xl border transition-all ${
+                layers.actor 
+                  ? 'bg-black/60 border-green-500/40 text-green-300' 
+                  : 'bg-black/30 border-white/5 text-white/30'
+              }`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">
+                    L2: Actor & Props
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => soloLayer('actor')}
+                      className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-white/60 hover:text-white"
+                      title="Solo Actor Layer"
+                    >
+                      Solo
+                    </button>
+                    <button
+                      onClick={() => toggleLayer('actor')}
+                      className={`p-1 rounded ${layers.actor ? 'text-green-300 bg-green-500/20' : 'text-white/30 hover:text-white'}`}
+                      title="Toggle Actor Visibility"
+                    >
+                      {layers.actor ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[9px] text-white/50 leading-tight">
+                  2.5D Dragon mesh, gold medallion & 55SH microphone
+                </p>
+              </div>
+
+              {/* Layer 3: Overlays & HUD */}
+              <div className={`p-2.5 rounded-xl border transition-all ${
+                layers.overlay 
+                  ? 'bg-black/60 border-purple-500/40 text-purple-300' 
+                  : 'bg-black/30 border-white/5 text-white/30'
+              }`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                    L3: Overlays & Subs
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => soloLayer('overlay')}
+                      className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-white/60 hover:text-white"
+                      title="Solo Overlay Layer"
+                    >
+                      Solo
+                    </button>
+                    <button
+                      onClick={() => toggleLayer('overlay')}
+                      className={`p-1 rounded ${layers.overlay ? 'text-purple-300 bg-purple-500/20' : 'text-white/30 hover:text-white'}`}
+                      title="Toggle Overlay Visibility"
+                    >
+                      {layers.overlay ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[9px] text-white/50 leading-tight">
+                  Dynamic captions, title card & pacing telemetry
+                </p>
+              </div>
+            </div>
+
+            {/* Diagnostic Overlay Toggles & Reset */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/5 text-[11px] font-mono text-white/70">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                  <input
+                    type="checkbox"
+                    checked={showSafeZones}
+                    onChange={(e) => setShowSafeZones(e.target.checked)}
+                    className="accent-cyan-400 rounded"
+                  />
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-cyan-400" />
+                    <span>Safe Zones (80%/90%)</span>
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                  <input
+                    type="checkbox"
+                    checked={showCompositionGrid}
+                    onChange={(e) => setShowCompositionGrid(e.target.checked)}
+                    className="accent-purple-400 rounded"
+                  />
+                  <span className="flex items-center gap-1">
+                    <Grid className="w-3 h-3 text-purple-400" />
+                    <span>3x3 Grid</span>
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                  <input
+                    type="checkbox"
+                    checked={showLayerTags}
+                    onChange={(e) => setShowLayerTags(e.target.checked)}
+                    className="accent-green-400 rounded"
+                  />
+                  <span className="flex items-center gap-1">
+                    <Crosshair className="w-3 h-3 text-green-400" />
+                    <span>HUD Telemetry</span>
+                  </span>
+                </label>
+              </div>
+
+              <button
+                onClick={resetAllLayers}
+                className="text-[10px] text-white/50 hover:text-white underline"
+              >
+                Reset All Layers
+              </button>
+            </div>
+          </div>
+          
           {/* Live Stage Visualizer / Video Player Container */}
           <div className="flex-1 bg-black/90 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center relative overflow-hidden min-h-[340px] shadow-2xl">
             
@@ -748,20 +1173,6 @@ export default function VideoExportUtility({
                     aspectRatio === '9:16' ? 'aspect-[9/16] w-auto' : 'aspect-[16/9] w-full'
                   }`}
                 />
-
-                {!isRecording && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/65 rounded-xl p-4 text-center">
-                    <div className="w-14 h-14 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
-                      <Play className="w-6 h-6 ml-0.5 fill-green-400" />
-                    </div>
-                    <p className="text-sm font-bold text-white font-mono">
-                      Ready to Render {durationMode === 60 ? '1-Minute' : '3-Minute'} Highlight
-                    </p>
-                    <p className="text-xs text-white/50 max-w-md mt-1 font-mono">
-                      Synchronizes comedy timing markers, procedural sub-bass drops, and voiceover to preserve cadence.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -771,7 +1182,7 @@ export default function VideoExportUtility({
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-red-400 font-bold flex items-center gap-2 animate-pulse">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                    <span>ENCODING STAGE STREAM ({aspectRatio === '9:16' ? '720x1280' : '1280x720'})...</span>
+                    <span>ENCODING {fps} FPS {videoFormat.toUpperCase()} ({aspectRatio === '9:16' ? '720x1280' : '1280x720'})...</span>
                   </span>
                   <span className="text-white/80">
                     {playbackTime.toFixed(1)}s / {targetDuration}s ({progressPercent.toFixed(0)}%)
@@ -786,6 +1197,81 @@ export default function VideoExportUtility({
               </div>
             )}
 
+            {/* Timeline Scrubber & Preview Controls Bar (Available when not recording) */}
+            {!isRecording && !recordedVideoUrl && (
+              <div className="w-full mt-3 pt-3 border-t border-white/10 flex flex-col space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-white/70">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={togglePreviewPlayback}
+                      className={`px-2.5 py-1 rounded-lg border flex items-center gap-1 font-bold transition-all ${
+                        isPlayingPreview
+                          ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
+                          : 'bg-green-500/20 border-green-500/60 text-green-300 hover:bg-green-500/30'
+                      }`}
+                    >
+                      {isPlayingPreview ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-green-300" />}
+                      <span>{isPlayingPreview ? 'Pause Preview' : 'Play Live Preview'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => stepTime(-1)}
+                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px]"
+                      title="Step back 1 second"
+                    >
+                      -1s
+                    </button>
+                    <button
+                      onClick={() => stepTime(1)}
+                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px]"
+                      title="Step forward 1 second"
+                    >
+                      +1s
+                    </button>
+                    
+                    <button
+                      onClick={() => jumpToCue(Math.max(0, activeCueIndex - 1))}
+                      disabled={activeCueIndex <= 0}
+                      className="p-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 disabled:opacity-30"
+                      title="Previous Cue"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => jumpToCue(Math.min(cues.length - 1, activeCueIndex + 1))}
+                      disabled={activeCueIndex >= cues.length - 1}
+                      className="p-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 disabled:opacity-30"
+                      title="Next Cue"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-cyan-400 font-bold">
+                      {Math.floor(playbackTime / 60)}:{Math.floor(playbackTime % 60).toString().padStart(2, '0')}.{Math.floor((playbackTime % 1) * 10)}
+                    </span>
+                    <span className="text-white/40">/</span>
+                    <span className="text-white/60">
+                      {Math.floor(targetDuration / 60)}:{Math.floor(targetDuration % 60).toString().padStart(2, '0')}.0
+                    </span>
+                  </div>
+                </div>
+
+                {/* Interactive Time Slider */}
+                <input
+                  type="range"
+                  min="0"
+                  max={targetDuration}
+                  step="0.1"
+                  value={playbackTime}
+                  onChange={(e) => setPlaybackTime(parseFloat(e.target.value))}
+                  aria-label="Timeline scrubber for video export"
+                  className="w-full accent-green-400 cursor-pointer h-1.5 bg-white/10 rounded-lg appearance-none"
+                />
+              </div>
+            )}
+
           </div>
 
           {/* Action Buttons Row */}
@@ -796,7 +1282,7 @@ export default function VideoExportUtility({
                 className="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-black font-mono font-black uppercase text-xs transition-all shadow-[0_0_25px_rgba(34,197,94,0.4)] flex items-center justify-center gap-2"
               >
                 <Play className="w-4 h-4 fill-black" />
-                <span>Render {durationMode === 60 ? '1-Min Short' : '3-Min Master'} Video</span>
+                <span>Render {durationMode === 60 ? '1-Min Short' : '3-Min Master'} Video ({fps} FPS {videoFormat.toUpperCase()})</span>
               </button>
             ) : (
               <button
@@ -814,7 +1300,7 @@ export default function VideoExportUtility({
                 className="py-3 px-5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-black font-mono font-black uppercase text-xs transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                <span>Download Video</span>
+                <span>Download {videoFormat.toUpperCase()} ({fps} FPS)</span>
               </button>
             )}
           </div>

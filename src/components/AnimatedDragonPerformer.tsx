@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HeckleItem, playTheatricalModeTransitionSfx, playSuperPuffDropSfx, speakHeckle } from '../audio/hecklerAudio';
 import { Flame, Sparkles, MessageSquare, Zap, Target, BookOpen, Award, Cannabis, GraduationCap, Mic, Coffee, Radio, Layers, Crown, Clock } from 'lucide-react';
+import { PlasmaStageBackground } from './PlasmaStageBackground';
 
 interface AnimatedDragonPerformerProps {
   isPlaying: boolean;
@@ -18,6 +19,9 @@ interface AnimatedDragonPerformerProps {
   activeStrainName?: string;
   mode?: 'stage' | 'workshop';
   isTimingPeaked?: boolean;
+  cameraAngle?: 'wide' | 'closeup' | 'crowd' | 'security';
+  activeEmote?: 'eye_roll' | 'smirk' | 'shrug' | 'puff' | 'sweat' | 'mind_blown' | null;
+  isBrutalMode?: boolean;
 }
 
 export default function AnimatedDragonPerformer({
@@ -35,6 +39,9 @@ export default function AnimatedDragonPerformer({
   activeStrainName = 'Cosmic OG (31.4% THC)',
   mode = 'stage',
   isTimingPeaked = false,
+  cameraAngle = 'wide',
+  activeEmote = null,
+  isBrutalMode = false,
 }: AnimatedDragonPerformerProps) {
   const [mouthOpen, setMouthOpen] = useState(false);
   const [blink, setBlink] = useState(false);
@@ -43,7 +50,39 @@ export default function AnimatedDragonPerformer({
   const [showModeBanner, setShowModeBanner] = useState(false);
   const [isSuperPuffStoned, setIsSuperPuffStoned] = useState(true);
   const [showTimesUpBanner, setShowTimesUpBanner] = useState(false);
+  const [cctvTime, setCctvTime] = useState('');
   const prevModeRef = useRef(mode);
+
+  // D9Enigma Plasma Overload State & Listener
+  const [isPlasmaOverloaded, setIsPlasmaOverloaded] = useState(false);
+  const isPlasmaActive = isPlasmaOverloaded || isTimingPeaked || activeEmote === 'puff' || activeEmote === 'mind_blown';
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+      if (e.key.toLowerCase() === 'p') {
+        setIsPlasmaOverloaded(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Synchronous ticking clock for security footage
+  useEffect(() => {
+    const updateClock = () => {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      setCctvTime(`${hh}:${mm}:${ss}`);
+    };
+    updateClock();
+    const t = setInterval(updateClock, 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // Play audio and show flash banner whenever mode switches
   useEffect(() => {
@@ -114,7 +153,13 @@ export default function AnimatedDragonPerformer({
   const reaction = activeHeckle?.reactionAnimation || 'idle';
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none">
+    <div 
+      className={`absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none transition-all duration-700 ${
+        cameraAngle === 'security'
+          ? 'grayscale-[0.95] sepia-[0.35] hue-rotate-[85deg] brightness-[1.1] contrast-[1.25]'
+          : ''
+      }`}
+    >
       
       {/* Theatrical Spotlight Cone (Stage Mode) or Warm Ambient Lounge (Workshop Mode) */}
       <AnimatePresence mode="wait">
@@ -190,6 +235,29 @@ export default function AnimatedDragonPerformer({
             <span>SUPER PUFF TIMING: PEAKED (極上の間)</span>
           </motion.div>
         )}
+
+        {/* Plasma Core Overlay Toggle Badge */}
+        <motion.button
+          layout
+          onClick={() => setIsPlasmaOverloaded(prev => !prev)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-mono text-[9px] font-bold uppercase tracking-wider backdrop-blur-md shadow-lg transition-all duration-300 cursor-pointer select-none ${
+            isPlasmaActive
+              ? 'border-cyan-400/80 bg-gradient-to-r from-cyan-950/60 via-purple-950/50 to-emerald-950/50 text-cyan-200 shadow-[0_0_25px_rgba(34,211,238,0.6)] animate-pulse'
+              : 'border-white/10 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white hover:border-white/20'
+          }`}
+          title="Toggle D9Enigma Plasma Performance Shield (P)"
+        >
+          <span className="relative flex h-2 w-2">
+            {isPlasmaActive && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            )}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${isPlasmaActive ? 'bg-cyan-400' : 'bg-white/40'}`}></span>
+          </span>
+          <span>D9 PLASMA: {isPlasmaActive ? 'OVERLOAD' : 'READY'}</span>
+          <span className="text-[7px] bg-white/10 px-1 rounded text-white/50 font-black">P</span>
+        </motion.button>
 
         {/* Theatrical Mode / Rank Badge */}
         <motion.div 
@@ -279,9 +347,19 @@ export default function AnimatedDragonPerformer({
         }}
         animate={{
           opacity: 1,
-          scale: reaction === 'smoke_blast' ? 1.06 : 1,
+          scale: 
+            cameraAngle === 'closeup' 
+              ? (reaction === 'smoke_blast' ? 1.55 : 1.5)
+              : cameraAngle === 'crowd'
+                ? (reaction === 'smoke_blast' ? 0.8 : 0.75)
+                : (reaction === 'smoke_blast' ? 1.06 : 1),
           x: reaction === 'dodge' ? -45 : laserPos ? (laserPos.x - 50) * 0.15 : swayOffset,
-          y: reaction === 'dodge' ? 35 : (isPlaying ? -4 : 0),
+          y: 
+            cameraAngle === 'closeup' 
+              ? (reaction === 'dodge' ? -5 : -32)
+              : cameraAngle === 'crowd'
+                ? (reaction === 'dodge' ? 55 : 42)
+                : (reaction === 'dodge' ? 35 : (isPlaying ? -4 : 0)),
           rotate: reaction === 'dodge' ? -8 : reaction === 'eyebrow_raise' ? 3 : (mode === 'workshop' ? -1.5 : 0),
         }}
         transition={{
@@ -329,6 +407,32 @@ export default function AnimatedDragonPerformer({
                 style={{ borderTopColor: primaryColor }}
               />
             </motion.div>
+          ) : activeHeckle ? (
+            <motion.div
+              key={`heckle-shout-${activeHeckle.id}`}
+              initial={{ opacity: 0, y: 30, scale: 0.8, rotate: -3 }}
+              animate={{ opacity: 1, y: -24, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, y: -10, scale: 0.85 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              className="absolute -top-28 z-40 max-w-sm bg-black/95 border-2 border-red-500 rounded-2xl p-3.5 shadow-[0_0_35px_rgba(239,68,68,0.6)] text-left backdrop-blur-xl pointer-events-auto animate-bounce"
+            >
+              <div className="flex items-center justify-between gap-1 text-[10px] font-mono text-red-400 uppercase tracking-widest font-black mb-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">{activeHeckle.icon}</span>
+                  <span>AUDIENCE HECKLER INTERRUPT</span>
+                </div>
+                <span className="px-1.5 py-0.2 bg-red-500 text-white rounded text-[8px] font-bold">
+                  {activeHeckle.category.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-white font-black italic leading-tight">
+                "{activeHeckle.phrase}"
+              </p>
+              {/* Pointing down triangle */}
+              <div 
+                className="absolute -bottom-2.5 left-12 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-red-500"
+              />
+            </motion.div>
           ) : (isPlaying || mode === 'workshop') && !activeHeckle ? (
             <motion.div
               key={`${studyThoughtIndex}-${mode}`}
@@ -352,7 +456,11 @@ export default function AnimatedDragonPerformer({
         {/* 2.5D Cell-Shaded Animated Super Puff Dragon Graphic - Vibrant & High Visibility */}
         <svg 
           viewBox="0 0 320 380" 
-          className="w-64 sm:w-80 h-72 sm:h-96 filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)] transition-transform duration-500"
+          className={`w-64 sm:w-80 h-72 sm:h-96 transition-all duration-500 ${
+            isPlasmaActive 
+              ? 'filter drop-shadow-[0_0_35px_rgba(34,211,238,0.75)] scale-[1.03]' 
+              : 'filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)]'
+          }`}
         >
           <defs>
             {/* Super Puff Vibrant Radiant Dragon Skin Gradients */}
@@ -396,6 +504,19 @@ export default function AnimatedDragonPerformer({
               <stop offset="100%" stopColor="#0f172a" />
             </linearGradient>
 
+            <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
+              <stop offset="30%" stopColor="#93c5fd" stopOpacity="0.3" />
+              <stop offset="70%" stopColor="#2563eb" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0.4" />
+            </linearGradient>
+
+            <linearGradient id="weedJuiceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.85" />
+              <stop offset="50%" stopColor="#059669" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#064e3b" stopOpacity="0.95" />
+            </linearGradient>
+
             <linearGradient id="bluntGlow" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#92400e" />
               <stop offset="70%" stopColor="#ea580c" />
@@ -415,6 +536,11 @@ export default function AnimatedDragonPerformer({
               <stop offset="100%" stopColor="#15803d" stopOpacity="0" />
             </radialGradient>
           </defs>
+
+          <PlasmaStageBackground 
+            intensity={isBrutalMode ? 'high' : 'normal'} 
+            isPlasmaActive={isPlasmaActive} 
+          />
 
           {/* Luminous Ambient Dragon Aura */}
           <circle cx="160" cy="180" r="140" fill="url(#dragonAura)" className="animate-pulse" />
@@ -545,12 +671,12 @@ export default function AnimatedDragonPerformer({
               <>
                 <ellipse 
                   cx={reaction === 'surprised' ? 135 : 137} 
-                  cy="120" 
+                  cy={activeEmote === 'eye_roll' ? 112 : 120} 
                   rx={reaction === 'surprised' ? 7 : 3.5} 
-                  ry="9" 
+                  ry={activeEmote === 'eye_roll' ? 4 : 9} 
                   fill="#7f1d1d" 
                 />
-                <circle cx="133" cy="116" r="2.5" fill="#fef08a" />
+                <circle cx={activeEmote === 'eye_roll' ? 135 : 133} cy={activeEmote === 'eye_roll' ? 110 : 116} r="2.5" fill="#fef08a" />
               </>
             )}
 
@@ -560,13 +686,25 @@ export default function AnimatedDragonPerformer({
               <>
                 <ellipse 
                   cx={reaction === 'surprised' ? 185 : 183} 
-                  cy="120" 
+                  cy={activeEmote === 'eye_roll' ? 112 : 120} 
                   rx={reaction === 'surprised' ? 7 : 3.5} 
-                  ry="9" 
+                  ry={activeEmote === 'eye_roll' ? 4 : 9} 
                   fill="#7f1d1d" 
                 />
-                <circle cx="181" cy="116" r="2.5" fill="#fef08a" />
+                <circle cx={activeEmote === 'eye_roll' ? 185 : 181} cy={activeEmote === 'eye_roll' ? 110 : 116} r="2.5" fill="#fef08a" />
               </>
+            )}
+
+            {/* Floating Sweat Drop (Sweat Reaction) */}
+            {activeEmote === 'sweat' && (
+              <motion.path
+                d="M 120 108 C 118 114, 115 116, 115 120 C 115 123, 117 125, 120 125 C 123 125, 125 123, 125 120 C 125 116, 122 114, 120 108 Z"
+                fill="#38bdf8"
+                stroke="#0284c7"
+                strokeWidth="1"
+                animate={{ y: [0, 15, 30], opacity: [1, 0.9, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              />
             )}
           </g>
 
@@ -602,7 +740,11 @@ export default function AnimatedDragonPerformer({
 
           {/* Eyebrows (Dynamic Swagger Mood) */}
           <path 
-            d={reaction === 'eyebrow_raise' 
+            d={activeEmote === 'smirk'
+              ? "M 118 96 Q 135 88 152 98" 
+              : activeEmote === 'eye_roll'
+              ? "M 118 100 Q 135 112 152 106"
+              : reaction === 'eyebrow_raise' 
               ? "M 118 98 Q 135 88 152 102" 
               : reaction === 'surprised' 
               ? "M 118 92 Q 135 84 152 94" 
@@ -613,7 +755,11 @@ export default function AnimatedDragonPerformer({
             fill="none" 
           />
           <path 
-            d={reaction === 'eyebrow_raise' 
+            d={activeEmote === 'smirk'
+              ? "M 168 106 Q 185 110 202 104"
+              : activeEmote === 'eye_roll'
+              ? "M 168 100 Q 185 112 202 106"
+              : reaction === 'eyebrow_raise' 
               ? "M 168 102 Q 185 94 202 92" 
               : reaction === 'surprised' 
               ? "M 168 94 Q 185 84 202 92" 
@@ -634,7 +780,12 @@ export default function AnimatedDragonPerformer({
             />
           ) : (
             <path 
-              d={reaction === 'deadpan' ? "M 135 186 L 185 186" : "M 130 182 Q 160 196 190 180"} 
+              d={activeEmote === 'smirk'
+                ? "M 130 186 Q 155 198 190 176" 
+                : reaction === 'deadpan' || activeEmote === 'eye_roll' 
+                ? "M 135 186 L 185 186" 
+                : "M 130 182 Q 160 196 190 180"
+              } 
               stroke="#000" 
               strokeWidth="3.5" 
               fill="none" 
@@ -649,24 +800,153 @@ export default function AnimatedDragonPerformer({
             </>
           )}
 
-          {/* Right Hand Holding the Master-Cured Blunt */}
-          <g transform="translate(195, 175)">
-            {/* Dragon Claws */}
-            <path d="M 10 20 Q 25 15 35 25 Q 25 35 10 30 Z" fill="url(#dragonSkin)" stroke="#000" strokeWidth="2" />
-            <polygon points="35,25 42,24 36,28" fill="#f59e0b" />
-            
-            {/* The Precision Blunt */}
-            <rect x="20" y="8" width="55" height="10" rx="3" fill="url(#bluntGlow)" stroke="#451a03" strokeWidth="1.5" transform="rotate(-25 20 8)" />
-            {/* Burning Cherry & Terpene Resonance Ring */}
-            <circle cx="72" cy="-16" r="6" fill="url(#cherryFire)" className="animate-pulse" />
-            <circle cx="74" cy="-17" r="10" fill={mode === 'stage' ? primaryColor : '#10b981'} opacity="0.5" className="animate-ping" />
-            
-            {/* Floating Smoke Rings with Japanese Kanji Symbols */}
-            <g transform="translate(85, -28)">
-              <circle cx="0" cy="0" r="10" fill="none" stroke="#ffffff" strokeWidth="1.5" opacity="0.4" className="animate-pulse" />
-              <circle cx="12" cy="-10" r="14" fill="none" stroke="#ffffff" strokeWidth="1" opacity="0.25" />
+          {/* LEFT ARM & DRAGON BONG */}
+          <motion.g
+            animate={{
+              y: activeEmote === 'shrug' ? [0, -18, -15] : [0, -3, 0],
+              rotate: activeEmote === 'shrug' ? [0, -12, -10] : [0, 1.2, 0],
+            }}
+            transition={{
+              duration: activeEmote === 'shrug' ? 0.35 : 4.8,
+              repeat: activeEmote === 'shrug' ? 0 : Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            {/* Left Arm Outline */}
+            <path d="M 105 245 Q 65 220 85 185" fill="none" stroke="#052e16" strokeWidth="18" strokeLinecap="round" />
+            {/* Left Arm Fill */}
+            <path d="M 105 245 Q 65 220 85 185" fill="none" stroke="url(#dragonSkin)" strokeWidth="13" strokeLinecap="round" />
+            {/* Left Arm Highlight */}
+            <path d="M 104 242 Q 68 218 84 187" fill="none" stroke="#86efac" strokeWidth="2" opacity="0.6" strokeLinecap="round" />
+
+            {/* Glass Bong Group */}
+            <g transform="translate(42, 115)">
+              {/* Bong Neck (Glass Tube) */}
+              <rect x="35" y="10" width="12" height="45" rx="2" fill="url(#glassGrad)" stroke="#1e3a8a" strokeWidth="1.5" />
+              
+              {/* Beaker Base of the Bong */}
+              <path 
+                d="M 41 52 L 20 85 C 16 92, 22 98, 30 98 L 52 98 C 60 98, 66 92, 62 85 L 41 52 Z" 
+                fill="url(#glassGrad)" 
+                stroke="#1e3a8a" 
+                strokeWidth="1.8" 
+              />
+
+              {/* Glowing Green Terpene Liquid inside Beaker Base */}
+              <path 
+                d="M 26 75 L 21 84 C 18 89, 22 95, 29 95 L 53 95 C 60 95, 64 89, 61 84 L 56 75 C 50 78, 32 78, 26 75 Z" 
+                fill="url(#weedJuiceGrad)" 
+              />
+
+              {/* Moving / Bubbling Water Chamber Dots */}
+              <motion.circle cx="30" cy="85" r="2.5" fill="#a7f3d0" animate={{ y: [0, -12, 0], opacity: [0, 1, 0] }} transition={{ duration: 1.6, repeat: Infinity, delay: 0.1 }} />
+              <motion.circle cx="42" cy="82" r="1.8" fill="#a7f3d0" animate={{ y: [0, -14, 0], opacity: [0, 1, 0] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.5 }} />
+              <motion.circle cx="51" cy="88" r="3" fill="#a7f3d0" animate={{ y: [0, -10, 0], opacity: [0, 1, 0] }} transition={{ duration: 2.0, repeat: Infinity, delay: 0.9 }} />
+              <motion.circle cx="36" cy="90" r="2" fill="#34d399" animate={{ y: [0, -8, 0], opacity: [0, 0.8, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: 1.3 }} />
+
+              {/* Downstem & Herb Bowl piece (Glass Slide) */}
+              <line x1="53" y1="62" x2="68" y2="52" stroke="#1e3a8a" strokeWidth="2.5" strokeLinecap="round" />
+              {/* Herb Bowl */}
+              <path d="M 66 48 L 74 44 L 72 56 Z" fill="#92400e" stroke="#1e3a8a" strokeWidth="1" />
+              {/* Glowing green embers in Bowl */}
+              <circle cx="70" cy="50" r="3" fill="#34d399" className="animate-pulse" />
+              <circle cx="70" cy="50" r="6" fill="#10b981" opacity="0.4" className="animate-ping" style={{ animationDuration: '2s' }} />
+
+              {/* Water bubbling surface waves */}
+              <path d="M 26 75 Q 41 78 56 75" fill="none" stroke="#34d399" strokeWidth="1.5" strokeDasharray="3 2" />
+
+              {/* Glass Rim Top */}
+              <ellipse cx="41" cy="10" rx="6" ry="2" fill="none" stroke="#93c5fd" strokeWidth="1.5" />
+
+              {/* Bubbling Smoke Wisps coming out of Bong Mouthpiece */}
+              <motion.path 
+                d="M 41 8 Q 30 -10 45 -22" 
+                fill="none" 
+                stroke="#cbd5e1" 
+                strokeWidth="2.5" 
+                strokeLinecap="round"
+                opacity="0.5"
+                animate={{
+                  pathLength: [0, 1],
+                  opacity: [0, 0.6, 0],
+                  x: [0, -6, 2],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+              <motion.path 
+                d="M 41 8 Q 50 -14 38 -28" 
+                fill="none" 
+                stroke="#e2e8f0" 
+                strokeWidth="1.5" 
+                strokeLinecap="round"
+                opacity="0.3"
+                animate={{
+                  pathLength: [0, 1],
+                  opacity: [0, 0.5, 0],
+                  x: [0, 8, -4],
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1.2,
+                }}
+              />
             </g>
-          </g>
+
+            {/* Left Hand / Claws holding the neck of the Bong */}
+            <g transform="translate(70, 150)">
+              {/* Claws grasping around the tube */}
+              <path d="M 5 10 Q 18 6 25 12 Q 18 18 5 15 Z" fill="url(#dragonSkin)" stroke="#000" strokeWidth="1.5" />
+              <polygon points="25,12 30,11 26,14" fill="#f59e0b" />
+
+              <path d="M 4 20 Q 16 16 22 22 Q 16 28 4 25 Z" fill="url(#dragonSkin)" stroke="#000" strokeWidth="1.5" />
+              <polygon points="22,22 27,21 23,24" fill="#f59e0b" />
+            </g>
+          </motion.g>
+
+          {/* RIGHT ARM & PRECISION BLUNT */}
+          <motion.g
+            animate={{
+              y: activeEmote === 'shrug' ? [0, -18, -15] : [0, 3, 0],
+              rotate: activeEmote === 'shrug' ? [0, 12, 10] : [0, -1.2, 0],
+            }}
+            transition={{
+              duration: activeEmote === 'shrug' ? 0.35 : 4.2,
+              repeat: activeEmote === 'shrug' ? 0 : Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            {/* Right Arm Outline */}
+            <path d="M 215 245 Q 255 220 230 185" fill="none" stroke="#052e16" strokeWidth="18" strokeLinecap="round" />
+            {/* Right Arm Fill */}
+            <path d="M 215 245 Q 255 220 230 185" fill="none" stroke="url(#dragonSkin)" strokeWidth="13" strokeLinecap="round" />
+            {/* Right Arm Highlight */}
+            <path d="M 216 242 Q 252 218 229 187" fill="none" stroke="#86efac" strokeWidth="2" opacity="0.6" strokeLinecap="round" />
+
+            {/* Right Hand Holding the Master-Cured Blunt */}
+            <g transform="translate(205, 155)">
+              {/* Dragon Claws */}
+              <path d="M 10 20 Q 25 15 35 25 Q 25 35 10 30 Z" fill="url(#dragonSkin)" stroke="#000" strokeWidth="2" />
+              <polygon points="35,25 42,24 36,28" fill="#f59e0b" />
+              
+              {/* The Precision Blunt */}
+              <rect x="20" y="8" width="55" height="10" rx="3" fill="url(#bluntGlow)" stroke="#451a03" strokeWidth="1.5" transform="rotate(-25 20 8)" />
+              {/* Burning Cherry & Terpene Resonance Ring */}
+              <circle cx="72" cy="-16" r="6" fill="url(#cherryFire)" className="animate-pulse" />
+              <circle cx="74" cy="-17" r="10" fill={mode === 'stage' ? primaryColor : '#10b981'} opacity="0.5" className="animate-ping" />
+              
+              {/* Floating Smoke Rings with Japanese Kanji Symbols */}
+              <g transform="translate(85, -28)">
+                <circle cx="0" cy="0" r="10" fill="none" stroke="#ffffff" strokeWidth="1.5" opacity="0.4" className="animate-pulse" />
+                <circle cx="12" cy="-10" r="14" fill="none" stroke="#ffffff" strokeWidth="1" opacity="0.25" />
+              </g>
+            </g>
+          </motion.g>
 
           {/* Mode-Specific Foreground Rig */}
           {mode === 'stage' ? (
@@ -793,6 +1073,83 @@ export default function AnimatedDragonPerformer({
             </div>
           </div>
         </motion.div>
+      )}
+
+      {/* Foreground Audience Silhouette for Cam C (Vibe Cam) */}
+      {cameraAngle === 'crowd' && (
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none z-30 flex items-end justify-around px-4 sm:px-12 opacity-85 select-none animate-in fade-in slide-in-from-bottom-6 duration-700">
+          <div className="flex items-end space-x-12 sm:space-x-24 w-full justify-between">
+            {/* Heckler left side silhouette */}
+            <div className="relative flex flex-col items-center">
+              <div className="w-16 h-10 bg-slate-950/90 rounded-t-full border-t border-slate-900/40 relative">
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-emerald-500/20 blur-sm animate-pulse" />
+                <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-emerald-400/40" />
+              </div>
+              <div className="w-14 h-16 bg-slate-950/95 rounded-t-[40%] mt-[-4px]" />
+            </div>
+
+            {/* Center silhouettes */}
+            <div className="hidden sm:flex items-end space-x-16">
+              <div className="w-12 h-14 bg-slate-950/95 rounded-t-[42%] transform -rotate-6" />
+              <div className="relative flex flex-col items-center">
+                <div className="w-10 h-12 bg-slate-950/95 rounded-t-[45%] transform rotate-3" />
+                <div className="absolute -top-2 left-3 w-4 h-3 bg-blue-500/30 rounded-md rotate-12 blur-[1px] animate-pulse" />
+              </div>
+            </div>
+
+            {/* Right side silhouette */}
+            <div className="relative flex flex-col items-center">
+              <div className="w-20 h-8 bg-slate-950/90 rounded-t-full border-t border-slate-900/40 flex justify-center items-end">
+                <div className="w-2 h-5 bg-slate-900/80 rounded mb-1" />
+              </div>
+              <div className="w-16 h-18 bg-slate-950/95 rounded-t-[38%] mt-[-4px] transform -scale-x-100" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Retro CCTV Infrared Security Overlay for Cam D (Security Feed) */}
+      {cameraAngle === 'security' && (
+        <div className="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 font-mono text-[10px] text-emerald-500 uppercase tracking-widest bg-emerald-950/10 mix-blend-color-dodge select-none overflow-hidden animate-in fade-in duration-500">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-bold relative">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600 absolute inline-block" />
+              <span className="text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)] ml-4">REC [CAM-04]</span>
+            </div>
+            <div className="text-right text-emerald-400 font-bold">
+              <span>CAMS: SECURITY FEED</span>
+            </div>
+          </div>
+
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 border border-emerald-500/25 rounded-full flex items-center justify-center">
+            <div className="w-2 h-[1px] bg-emerald-400" />
+            <div className="h-2 w-[1px] bg-emerald-400 absolute" />
+          </div>
+
+          <div className="flex items-end justify-between font-bold z-10">
+            <div className="flex flex-col gap-0.5 text-[9px]">
+              <div>SYS: ACTIVE_DRAGON_V9</div>
+              <div>ST THC: Cosmic OG (31.4%)</div>
+              <div>XP LEVEL: {comedyXp}</div>
+            </div>
+            <div className="text-right flex flex-col gap-0.5 text-[9px]">
+              <div>DATE: SEPT 12, 2026</div>
+              <div>TIME: {cctvTime}</div>
+              <div className="text-white">CODEC: VEO_3.1_INFRARED</div>
+            </div>
+          </div>
+
+          {/* CRT Horizontal Line Scanning CSS Gradient */}
+          <div 
+            className="absolute inset-0 pointer-events-none opacity-[0.14]" 
+            style={{
+              background: 'repeating-linear-gradient(rgba(16,185,129,0.1) 0px, rgba(16,185,129,0.1) 1px, transparent 1px, transparent 3px)'
+            }}
+          />
+          {/* Heavy CRT Vignette */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_55%,rgba(0,12,0,0.45)_100%)] pointer-events-none" />
+        </div>
       )}
 
     </div>
