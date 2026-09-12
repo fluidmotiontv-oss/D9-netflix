@@ -134,20 +134,55 @@ export default function AnimatedDragonPerformer({
     }, 3200);
   };
 
-  // Speaking mouth movement when playing or roasting
+  // Real-time audio-synced mouth movement matching speech synthesis and audio playback
+  const [isSpeakingAudio, setIsSpeakingAudio] = useState(false);
+
+  useEffect(() => {
+    const handleSpeechActive = (e: any) => {
+      setIsSpeakingAudio(!!e.detail?.speaking);
+      if (!e.detail?.speaking) setMouthOpen(false);
+    };
+
+    const handleSpeechBoundary = () => {
+      // Toggle mouth on phoneme/word boundaries for speech-synced flapping
+      setMouthOpen(prev => !prev);
+    };
+
+    window.addEventListener('dragon-speech-active', handleSpeechActive as EventListener);
+    window.addEventListener('dragon-speech-boundary', handleSpeechBoundary as EventListener);
+
+    // Periodic poller to verify speechSynthesis.speaking state in case events are missed
+    const pollInterval = setInterval(() => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const speaking = window.speechSynthesis.speaking;
+        setIsSpeakingAudio(speaking);
+        if (!speaking && !isPlaying && !isRoasting) {
+          setMouthOpen(false);
+        }
+      }
+    }, 200);
+
+    return () => {
+      window.removeEventListener('dragon-speech-active', handleSpeechActive as EventListener);
+      window.removeEventListener('dragon-speech-boundary', handleSpeechBoundary as EventListener);
+      clearInterval(pollInterval);
+    };
+  }, []);
+
+  // Speaking mouth movement loop when playing, roasting, or actively speaking via speech synthesis
   useEffect(() => {
     let speakInterval: any;
-    if (isPlaying || isRoasting) {
+    if (isPlaying || isRoasting || isSpeakingAudio) {
       speakInterval = setInterval(() => {
         setMouthOpen(prev => !prev);
         setSwayOffset((Math.random() - 0.5) * 6);
-      }, 140);
+      }, isSpeakingAudio ? 110 : 140); // Faster flap during live speech
     } else {
       setMouthOpen(false);
       setSwayOffset(0);
     }
     return () => clearInterval(speakInterval);
-  }, [isPlaying, isRoasting]);
+  }, [isPlaying, isRoasting, isSpeakingAudio]);
 
   // Determine dragon animation reaction pose
   const reaction = activeHeckle?.reactionAnimation || 'idle';

@@ -325,8 +325,18 @@ export function speakHeckle(text: string, isPerformer = false, isSuperPuff = tru
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
   if (!isPerformer) {
-    // Route through Web Speech API Heckler Persona handler
-    speakHeckleWithPersona(text, personaId);
+    // Route through Web Speech API Heckler Persona handler with custom boundary dispatch
+    speakHeckleWithPersona(text, personaId, {
+      onStart: () => {
+        window.dispatchEvent(new CustomEvent('dragon-speech-active', { detail: { speaking: true } }));
+      },
+      onEnd: () => {
+        window.dispatchEvent(new CustomEvent('dragon-speech-active', { detail: { speaking: false } }));
+      },
+      onError: () => {
+        window.dispatchEvent(new CustomEvent('dragon-speech-active', { detail: { speaking: false } }));
+      }
+    });
     return;
   }
 
@@ -353,9 +363,24 @@ export function speakHeckle(text: string, isPerformer = false, isSuperPuff = tru
       if (enVoice) utterance.voice = enVoice;
     }
 
+    utterance.onstart = () => {
+      window.dispatchEvent(new CustomEvent('dragon-speech-active', { detail: { speaking: true } }));
+    };
+    utterance.onboundary = () => {
+      // Toggle mouth on word/phoneme boundaries for ultra-precise speech sync
+      window.dispatchEvent(new CustomEvent('dragon-speech-boundary'));
+    };
+    utterance.onend = () => {
+      window.dispatchEvent(new CustomEvent('dragon-speech-active', { detail: { speaking: false } }));
+    };
+    utterance.onerror = () => {
+      window.dispatchEvent(new CustomEvent('dragon-speech-active', { detail: { speaking: false } }));
+    };
+
     window.speechSynthesis.speak(utterance);
   } catch (err) {
     console.warn('Speech synthesis unavailable:', err);
+    window.dispatchEvent(new CustomEvent('dragon-speech-active', { detail: { speaking: false } }));
   }
 }
 
