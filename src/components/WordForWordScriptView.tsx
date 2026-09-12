@@ -12,13 +12,17 @@ import {
   Cannabis, 
   FileText, 
   Maximize2,
-  ChevronRight
+  ChevronRight,
+  Video,
+  Globe
 } from 'lucide-react';
 import { SUPER_PUFF_INITIATION_SPECIAL } from '../data';
 
 interface WordForWordScriptViewProps {
   currentActId?: string;
   onSelectAct?: (act: any) => void;
+  onExportVideo?: (act?: any) => void;
+  onOpenLocalization?: () => void;
   primaryColor?: string;
   accentColor?: string;
 }
@@ -26,6 +30,8 @@ interface WordForWordScriptViewProps {
 export default function WordForWordScriptView({
   currentActId,
   onSelectAct,
+  onExportVideo,
+  onOpenLocalization,
   primaryColor = '#00f3ff',
   accentColor = '#22d3ee'
 }: WordForWordScriptViewProps) {
@@ -122,7 +128,27 @@ export default function WordForWordScriptView({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {onOpenLocalization && (
+              <button
+                onClick={onOpenLocalization}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-500/20 to-cyan-500/20 hover:from-purple-500/30 hover:to-cyan-500/30 border border-purple-500/40 text-[10px] font-mono font-bold text-purple-200 transition-all shadow-sm"
+                title="Open Stand-Up Comedy Localization Engine (DE, ES, FR, JA)"
+              >
+                <Globe className="w-3 h-3 text-cyan-400" />
+                <span>Localize (DE/ES/FR/JA)</span>
+              </button>
+            )}
+            {onExportVideo && (
+              <button
+                onClick={() => onExportVideo()}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-[10px] font-mono font-bold text-green-300 transition-all shadow-sm"
+                title="Export 1-Minute or 3-Minute Video with Audio & Script"
+              >
+                <Video className="w-3 h-3 text-green-400" />
+                <span>Export Video (1m/3m)</span>
+              </button>
+            )}
             <button
               onClick={handleCopyFullScript}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-[10px] font-mono text-white transition-all"
@@ -263,6 +289,19 @@ export default function WordForWordScriptView({
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  {onExportVideo && (
+                    <button
+                      onClick={() => {
+                        if (onSelectAct) onSelectAct(act);
+                        onExportVideo(act);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-500/15 hover:bg-green-500/25 border border-green-500/30 text-[10px] font-mono font-bold text-green-300 transition-all"
+                      title="Export this act as a 1-Min or 3-Min video with audio"
+                    >
+                      <Video className="w-3 h-3 text-green-400" />
+                      <span>Export Video</span>
+                    </button>
+                  )}
                   {onSelectAct && (
                     <button
                       onClick={() => onSelectAct(act)}

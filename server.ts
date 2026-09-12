@@ -13,6 +13,9 @@ async function startServer() {
   const IS_PROD = process.env.NODE_ENV === 'production';
   const JWT_SECRET = process.env.JWT_SECRET || 'dragon9_temporal_sync_fallback_key_2026';
 
+  // Enable trust proxy for Cloud Run and reverse proxy ingress
+  app.set('trust proxy', 1);
+
   // 1. Security & Middleware Hardening
   app.use(helmet({
     contentSecurityPolicy: IS_PROD ? undefined : false, // Allow Vite inline scripts & HMR in dev
@@ -32,6 +35,10 @@ async function startServer() {
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: {
+      xForwardedForHeader: false,
+      forwardedHeader: false,
+    },
     message: { error: 'Too many requests, please try again later.' },
   });
   app.use('/api/', globalLimiter);
@@ -42,6 +49,10 @@ async function startServer() {
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: {
+      xForwardedForHeader: false,
+      forwardedHeader: false,
+    },
     message: { error: 'AI request limit reached. Please wait a minute.' },
   });
 

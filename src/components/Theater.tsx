@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import VideoPlayer from './VideoPlayer';
 import Visualizer from './Visualizer';
 import TimeSync from './TimeSync';
@@ -13,6 +13,8 @@ import NutfloxParadigm from './NutfloxParadigm';
 import BeachedAsBroSection from './BeachedAsBroSection';
 import TideSynthAudioView from './TideSynthAudioView';
 import WordForWordScriptView from './WordForWordScriptView';
+import VideoExportModal from './export/VideoExportModal';
+import LocalizationEngine from './LocalizationEngine';
 import { 
   ACTS, 
   SUPER_PUFF_INITIATION_SPECIAL,
@@ -55,7 +57,9 @@ import {
   AudioWaveform,
   FileText,
   Copy,
-  Check
+  Check,
+  Video,
+  Globe
 } from 'lucide-react';
 
 export default function Theater() {
@@ -63,7 +67,7 @@ export default function Theater() {
   const [selectedSpecial, setSelectedSpecial] = useState<'initiation_18m' | 'classic_45m'>('initiation_18m');
   const [actsData, setActsData] = useState<any[]>(SUPER_PUFF_INITIATION_SPECIAL.acts);
   const [currentAct, setCurrentAct] = useState<any>(SUPER_PUFF_INITIATION_SPECIAL.acts[0]);
-  const [activeTab, setActiveTab] = useState<'acts' | 'script' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached'>('acts');
+  const [activeTab, setActiveTab] = useState<'acts' | 'script' | 'localization' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached'>('acts');
   const [visualizerMode, setVisualizerMode] = useState<'tidesynth' | 'spectrum'>('tidesynth');
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [theatricalMode, setTheatricalMode] = useState<'stage' | 'workshop'>('stage');
@@ -129,11 +133,11 @@ export default function Theater() {
   };
 
   // Sync theatricalMode when activeTab changes
-  const handleTabChange = (tab: 'acts' | 'script' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached') => {
+  const handleTabChange = (tab: 'acts' | 'script' | 'localization' | 'archives' | 'theory' | 'terpenes' | 'heckler' | 'prompts' | 'thumbro' | 'nft' | 'nutflox' | 'beached') => {
     setActiveTab(tab);
     if (tab === 'archives' || tab === 'nft' || tab === 'thumbro' || tab === 'nutflox' || tab === 'beached') {
       setTheatricalMode('workshop');
-    } else if (tab === 'acts' || tab === 'script') {
+    } else if (tab === 'acts' || tab === 'script' || tab === 'localization') {
       setTheatricalMode('stage');
     }
   };
@@ -202,9 +206,30 @@ export default function Theater() {
   
   // Custom Effects
   const [isSmoking, setIsSmoking] = useState(false);
+  const [isChromaticActive, setIsChromaticActive] = useState(false);
+  const chromaticTimeoutRef = useRef<any>(null);
+
+  // Trigger super-puff-chromatic class animation across the main stage
+  const triggerChromaticEffect = useCallback(() => {
+    if (chromaticTimeoutRef.current) clearTimeout(chromaticTimeoutRef.current);
+    setIsChromaticActive(true);
+
+    const stageNodes = document.querySelectorAll('#main-stage, #stage-video-container');
+    stageNodes.forEach(node => {
+      node.classList.remove('super-puff-chromatic');
+      void (node as HTMLElement).offsetWidth;
+      node.classList.add('super-puff-chromatic');
+    });
+
+    chromaticTimeoutRef.current = setTimeout(() => {
+      setIsChromaticActive(false);
+      stageNodes.forEach(node => node.classList.remove('super-puff-chromatic'));
+    }, 4800);
+  }, []);
   
   // Modal states
   const [showModal, setShowModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [pendingAct, setPendingAct] = useState<any>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [lastModalTime, setLastModalTime] = useState(0);
@@ -219,6 +244,9 @@ export default function Theater() {
     setActiveHeckle(heckle);
     setIsRoasting(false);
     setRoastDialogue(null);
+
+    // Trigger super-puff-chromatic animation on main stage
+    triggerChromaticEffect();
 
     // Initial shock drops composure
     setComposure(prev => Math.max(35, prev - Math.floor(Math.random() * 15 + 15)));
@@ -351,26 +379,7 @@ export default function Theater() {
   }, [actsData, currentAct.id]);
 
   const handleExportAct = () => {
-    const exportData = {
-      project: selectedSpecial === 'initiation_18m' ? "Super Puff: The Initiation" : "Dragon 9 Comedy Special",
-      version: selectedSpecial === 'initiation_18m' ? "1.0.0-APEX" : "1.0.0",
-      ...currentAct,
-      _meta: {
-        exportedAt: new Date().toISOString(),
-        supportedWithJoints: true,
-        exportId: currentAct._meta?.exportId || `SP-${currentAct.id}`,
-        message: "Thanks for supporting the temporal void with digital joints! Times Up, Mother Fathers."
-      }
-    };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentAct.id || 'super-puff-act'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setShowExportModal(true);
   };
 
   const handleSelectSpecial = (special: 'initiation_18m' | 'classic_45m') => {
@@ -538,7 +547,7 @@ export default function Theater() {
   };
 
   return (
-    <>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] grid-rows-[auto_1fr_50vh] lg:grid-rows-[auto_1fr] flex-1 w-full h-full overflow-hidden relative">
       {/* Dynamic Volumetric Stage Lighting Effect (Pulses & Mood Colors) */}
       <StageLighting 
         currentMood={currentMood}
@@ -638,11 +647,11 @@ export default function Theater() {
           
           <button
             onClick={handleExportAct}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 border border-green-500/50 text-green-500 rounded-lg bg-green-500/10 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all text-xs"
-            title="Export Act (E)"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 border border-green-500/50 text-green-400 rounded-lg bg-green-500/10 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all text-xs font-mono font-bold"
+            title="Export Video (1-Min / 3-Min with Audio & Script) (E)"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export</span>
+            <Video className="w-3.5 h-3.5 text-green-400" />
+            <span>Export Video</span>
           </button>
 
           <button
@@ -689,7 +698,12 @@ export default function Theater() {
       </header>
 
       {/* Main Content (Video & Visualizer) */}
-      <div className="col-span-1 lg:col-start-1 row-start-2 flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 relative lg:border-r border-white/10 overflow-y-auto lg:overflow-hidden min-h-0 z-10">
+      <div 
+        id="main-stage" 
+        className={`col-span-1 lg:col-start-1 row-start-2 flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6 relative lg:border-r border-white/10 overflow-y-auto lg:overflow-hidden min-h-0 z-10 transition-all duration-500 ${
+          isChromaticActive ? 'super-puff-chromatic' : ''
+        }`}
+      >
         
         {/* Active Stage Mood & Theatrical Mode Switcher */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
@@ -736,9 +750,10 @@ export default function Theater() {
 
         {/* Video Player Container with Dynamic Rim Light Glow */}
         <div 
+          id="stage-video-container" 
           className={`flex-1 rounded-2xl overflow-hidden border bg-black/60 shadow-[0_0_35px_rgba(0,0,0,0.7)] relative transition-all duration-700 min-h-[250px] stage-rim-pulse ${
             isSmoking ? 'stoned-camera-active' : ''
-          }`}
+          } ${isChromaticActive ? 'super-puff-chromatic' : ''}`}
           style={{
             borderColor: `${currentMood.primary}44`,
           }}
@@ -886,6 +901,20 @@ export default function Theater() {
              >
                <FileText className="w-3 h-3 text-cyan-400" />
                <span>Script (18-Min)</span>
+             </button>
+
+             <button 
+               className={`px-3 pb-2 text-[9px] font-mono tracking-widest uppercase transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
+                 activeTab === 'localization' ? 'text-purple-300 font-bold border-purple-400' : 'border-transparent text-white/50 hover:text-purple-300'
+               }`}
+               style={{
+                 borderColor: activeTab === 'localization' ? '#a855f7' : 'transparent',
+                 color: activeTab === 'localization' ? '#c084fc' : undefined,
+               }}
+               onClick={() => handleTabChange('localization')}
+             >
+               <Globe className="w-3 h-3 text-purple-400" />
+               <span>Localization (DE/ES/FR/JA)</span>
              </button>
 
              <button 
@@ -1128,9 +1157,24 @@ export default function Theater() {
               <WordForWordScriptView
                 currentActId={currentAct.id}
                 onSelectAct={(act) => handleActClick(act)}
+                onExportVideo={(act) => {
+                  if (act) setCurrentAct(act);
+                  setShowExportModal(true);
+                }}
+                onOpenLocalization={() => handleTabChange('localization')}
                 primaryColor={currentMood.primary}
                 accentColor={currentMood.accent}
               />
+            )}
+
+            {activeTab === 'localization' && (
+              <div className="h-[680px] lg:h-[780px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                <LocalizationEngine
+                  initialLanguage="DE"
+                  themePrimary={currentMood.primary}
+                  themeAccent={currentMood.accent}
+                />
+              </div>
             )}
 
             {activeTab === 'archives' && (
@@ -1435,6 +1479,7 @@ export default function Theater() {
                   comedyXp={comedyXp}
                   activeStrain={activeStrain}
                   onSelectStrain={setActiveStrain}
+                  onActivateChromatic={(active) => setIsChromaticActive(active)}
                 />
               </div>
             )}
@@ -1482,6 +1527,15 @@ export default function Theater() {
         onSkip={handleSkip} 
       />
 
+      {/* Video & Audio Script-Synced Export Studio */}
+      <VideoExportModal
+        act={currentAct}
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        primaryColor={currentMood.primary}
+        accentColor={currentMood.accent}
+      />
+
       {/* Shortcuts Overlay */}
       {showShortcuts && (
         <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-white/20 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-50 animate-in fade-in slide-in-from-top-4 w-96 text-center">
@@ -1520,7 +1574,7 @@ export default function Theater() {
             </li>
             <li className="flex justify-between items-center border-b border-white/5 pb-2">
               <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[E]</span>
-              <span>Export Act JSON</span>
+              <span>Export Video Studio (1m / 3m)</span>
             </li>
             <li className="flex justify-between items-center border-b border-white/5 pb-2">
               <span className="bg-white/10 px-2 py-1 rounded text-white font-bold">[B]</span>
@@ -1536,7 +1590,7 @@ export default function Theater() {
 
       {/* Global Special Effects Layer */}
       <StonerDragonEffects isSmoking={isSmoking} onComplete={() => setIsSmoking(false)} />
-    </>
+    </div>
   );
 }
 
